@@ -259,8 +259,6 @@ async function handleBingo(req, res, user, match) {
   const form = match[2] ? await readForm(req) : null;
   const session = await bingoStore.loadSession(pool, Number(match[1]));
   if (!session) return send(res, 404, 'text/plain', 'not found\n');
-  if (Date.now() < new Date(session.starts_at).getTime()) return send(res, 403, 'text/html; charset=utf-8', ui.page('Bingo unavailable',
-    '<main class="dashboard"><h1>This event has not started.</h1><p>Come back at the scheduled start time to play Bingo.</p><a href="/">Back to schedule</a></main>'));
   if (match[2]) {
     let result;
     if (match[2] === '/start') {
@@ -276,8 +274,7 @@ async function handleBingo(req, res, user, match) {
     }
     if (result.status !== 'ok') {
       if (result.status === 'invalid') return send(res, 400, 'text/plain', 'Invalid square.\n');
-      const message = result.status === 'not_started' ? 'This event has not started. Come back at the scheduled start time.' :
-        result.status === 'missing' ? 'Start a card before the event ends to play.' :
+      const message = result.status === 'missing' ? 'Start a card before the event ends to play.' :
         match[2] === '/start' ? 'This event has ended. New cards are closed.' : 'Your card is read-only. The correction window has closed.';
       return send(res, 409, 'text/html; charset=utf-8', resultsUi.messagePage(message, session, { team, version, user }));
     }

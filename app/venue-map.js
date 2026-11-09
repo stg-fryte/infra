@@ -4,9 +4,6 @@
  function isUpcoming(event, now = Date.now()) {
   return new Date(event.ends_at).getTime() > now;
  }
- function isLive(event, now = Date.now()) {
-  return new Date(event.starts_at).getTime() <= now && isUpcoming(event, now);
- }
  // Verified against OSM/Nominatim on 2026-11-09. Keep the source element for
  // auditing; requests during browsing use tiles only, not a public geocoder.
  const externalVenues = {
@@ -200,7 +197,7 @@
   }
   function updateBingoLink() {
    const existing = detail.querySelector('[data-bingo]');
-   if (!selectedEvent || !isLive(selectedEvent)) {existing?.remove(); return;}
+   if (!selectedEvent || !(selectedEvent.games || []).includes('bingo')) {existing?.remove(); return;}
    if (existing) return;
    const bingo = create('a','Play Buzzword Bingo','purple-link'); bingo.dataset.bingo = '';
    bingo.href = `/bingo/${encodeURIComponent(selectedEvent.id)}`; bingo.target='_blank'; bingo.rel='noopener'; detail.append(bingo);
@@ -245,7 +242,7 @@
    displayDestination(true);
   } else {showDetails(null); showStack(view.venue);}
  }
- const api = {resolveDestination, selectDestination, mapLinks, offsitePreview, isUpcoming, isLive, mount};
+ const api = {resolveDestination, selectDestination, mapLinks, offsitePreview, isUpcoming, mount};
  if (typeof module !== 'undefined' && module.exports) module.exports = api;
  else root.VenueMap = api;
 })(typeof window === 'undefined' ? globalThis : window);
