@@ -281,38 +281,9 @@ async function loadOrCreateCard(userId, session) {
 }
 
 function bingoHtml(user, session, card) {
-  const marked = new Set(card.marked);
-  const winning = new Set(winningLines(card.marked).flat());
-  const cells = card.cells
-    .map((word, index) => {
-      const isFree = index === FREE_INDEX;
-      const style = winning.has(index) ? 'btn-success' : marked.has(index) ? 'btn-primary' : 'btn-outline-secondary';
-      const disabled = isFree ? ' disabled' : '';
-      return `<button class="btn ${style} w-100 h-100 p-1 small" style="min-height:5rem;overflow-wrap:anywhere" name="cell" value="${index}"${disabled}>${escapeHtml(word)}</button>`;
-    })
-    .join('');
-  let status;
-  if (session.winner_user_id === user.id) {
-    status = `<div class="alert alert-success">You got Bingo first! Prize: <strong>${escapeHtml(session.prize)}</strong>. Show this screen at the session.</div>`;
-  } else if (card.bingo_at) {
-    status = `<div class="alert alert-info">Bingo! <strong>${escapeHtml(session.winner || 'Another player')}</strong> got there first and claimed the prize.</div>`;
-  } else if (session.winner) {
-    status = `<div class="alert alert-secondary">Prize already claimed by <strong>${escapeHtml(session.winner)}</strong>. You can still play for fun.</div>`;
-  } else {
-    status = '<div class="alert alert-warning">First player to get 5 in a row wins the prize.</div>';
-  }
-  const prize = session.prize ? `<p class="mb-3">Prize: <strong>${escapeHtml(session.prize)}</strong></p>` : '';
-  return page(
-    `Buzzword Bingo: ${session.title}`,
-    `<nav class="navbar bg-body border-bottom"><div class="container"><a class="navbar-brand" href="/">${escapeHtml(team)}</a>
-<span class="text-body-secondary small">${escapeHtml(user.username)}</span></div></nav>
-<main class="container py-4" style="max-width:40rem">
-<h1 class="h4 mb-1">Buzzword Bingo</h1>
-<p class="text-body-secondary mb-2">${escapeHtml(session.title)}</p>${prize}${status}
-<form method="post" action="/bingo/${session.id}/mark" style="display:grid;grid-template-columns:repeat(${GRID_SIZE},1fr);gap:.4rem">${cells}</form>
-<p class="small text-body-secondary mt-3">Tap a word when the speaker says it. Reload to see if the prize is taken.</p>
-<p><a href="/">Back to schedule</a></p></main>`,
-  );
+  return ui.bingoPage(user, session, card, {
+    team, version, freeIndex: FREE_INDEX, winningLines: winningLines(card.marked),
+  });
 }
 
 async function handleBingoMark(req, res, user, session) {
