@@ -21,6 +21,20 @@
   }
  } catch {}
  let toastTimer;
+ function updateBingoLinks() {
+  const now = Date.now();
+  for (const row of all) {
+   const live = Date.parse(row.dataset.startsAt) <= now && now < Date.parse(row.dataset.endsAt);
+   const existing = row.querySelector('[data-bingo]');
+   if (!live) {existing?.remove(); continue;}
+   if (existing) continue;
+   const link = document.createElement('a');
+   link.className = 'bingo-link'; link.dataset.bingo = '';
+   link.href = '/bingo/' + encodeURIComponent(row.dataset.id);
+   link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Play Buzzword Bingo';
+   row.querySelector('.session-bingo-action').append(link);
+  }
+ }
  function notify(message) {const toast = document.querySelector('.toast'); toast.textContent = message; toast.classList.add('visible'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('visible'), 2600);}
  function update() {
   const compact = document.querySelector('#session-list').classList.contains('compact');
@@ -100,5 +114,7 @@
  document.querySelector('#jump-sessions').addEventListener('click', () => {document.querySelector('#sessions').scrollIntoView({behavior:'smooth'}); input.focus({preventScroll:true});});
  document.addEventListener('keydown', e => {if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {e.preventDefault(); input.focus();}});
  update();
+ updateBingoLinks();
+ setInterval(updateBingoLinks, 1000);
  setInterval(update, 30000);
 })();

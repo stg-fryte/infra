@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const ui = require('./ui');
-const { isUpcoming } = require('./venue-map');
+const { isUpcoming, isLive } = require('./venue-map');
 const http = require('node:http');
 const { readFile } = require('node:fs/promises');
 const path = require('node:path');
@@ -34,6 +34,7 @@ const SCHEDULE_QUERY = `
          to_char(d.event_date, 'YYYY-MM-DD') AS date,
          to_char(s.start_time, 'HH24:MI') AS start_time,
          to_char(s.end_time, 'HH24:MI') AS end_time,
+         (d.event_date + s.start_time) AT TIME ZONE 'America/Denver' AS starts_at,
          (d.event_date + s.end_time) AT TIME ZONE 'America/Denver' AS ends_at,
          s.title,
          t.name AS track,
@@ -262,8 +263,11 @@ const BINGO_PATH = /^\/bingo\/(\d{1,9})(\/mark)?$/;
 
 async function loadBingoSession(sessionId) {
   const { rows } = await pool.query(
-    `SELECT s.id, s.title, t.name AS track, p.prize, p.winner_user_id, w.username AS winner
+    `SELECT s.id, s.title, t.name AS track, p.prize, p.winner_user_id, w.username AS winner,
+            (d.event_date + s.start_time) AT TIME ZONE 'America/Denver' AS starts_at,
+            (d.event_date + s.end_time) AT TIME ZONE 'America/Denver' AS ends_at
      FROM sessions s
+     JOIN days d ON d.id = s.day_id
      LEFT JOIN tracks t ON t.id = s.track_id
      LEFT JOIN session_prizes p ON p.session_id = s.id
      LEFT JOIN users w ON w.id = p.winner_user_id
@@ -292,8 +296,8 @@ function bingoHtml(user, session, card) {
   });
 }
 
-async function handleBingoMark(req, res, user, session) {
-  const index = Number((await readForm(req)).get('cell'));
+async function handleBingoMark(req, res, user, session, form) {
+  const index = Number(form.get('cell'));
   if (isMarkableIndex(index)) {
     await loadOrCreateCard(user.id, session);
     const { rows } = await pool.query(
@@ -319,13 +323,17 @@ async function handleBingoMark(req, res, user, session) {
 }
 
 async function handleBingo(req, res, user, match) {
+  const allowedMethod = match[2] ? 'POST' : 'GET';
+  if (req.method !== allowedMethod) return send(res, 405, 'text/plain', 'method not allowed\n', { allow: allowedMethod });
+  // Read a marking request before checking the clock, including slow uploads.
+  const form = match[2] ? await readForm(req) : null;
   const session = await loadBingoSession(Number(match[1]));
   if (!session) return send(res, 404, 'text/plain', 'not found\n');
+  if (!isLive(session)) return send(res, 403, 'text/html; charset=utf-8', ui.page('Bingo unavailable',
+    '<main class="dashboard"><h1>Bingo is available only during a live event.</h1><p>Come back at the scheduled start time. Play closes when the event ends.</p><a href="/">Back to schedule</a></main>'));
   if (match[2]) {
-    if (req.method !== 'POST') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'POST' });
-    return handleBingoMark(req, res, user, session);
+    return handleBingoMark(req, res, user, session, form);
   }
-  if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
   const card = await loadOrCreateCard(user.id, session);
   return send(res, 200, 'text/html; charset=utf-8', bingoHtml(user, session, card));
 }
