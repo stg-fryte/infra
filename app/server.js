@@ -27,12 +27,62 @@ const MIGRATION_LOCK_KEY = 727001;
 const BOOTSTRAP_CSS_URL = '/static/bootstrap.min.css';
 const bootstrapCss = fs.readFileSync(require.resolve('bootstrap/dist/css/bootstrap.min.css'));
 
-const sessions = [
-  { id: 1, time: '10:00', room: 'Main', title: 'Kickoff and sponsor talks' },
-  { id: 2, time: '11:00', room: 'Everywhere', title: 'Build' },
-  { id: 3, time: '14:00', room: 'Main', title: 'Panel' },
-  { id: 4, time: '17:30', room: 'Main', title: 'Submissions close' },
-];
+const SCHEDULE_QUERY = `
+  SELECT s.id,
+         d.label AS day,
+         to_char(d.event_date, 'YYYY-MM-DD') AS date,
+         to_char(s.start_time, 'HH24:MI') AS start_time,
+         to_char(s.end_time, 'HH24:MI') AS end_time,
+         s.title,
+         t.name AS track,
+         s.level,
+         s.format,
+         l.venue,
+         l.level AS floor,
+         l.room,
+         s.notes,
+         COALESCE(string_agg(sp.name, ', ' ORDER BY sp.name), '') AS speakers
+  FROM sessions s
+  JOIN days d ON d.id = s.day_id
+  JOIN locations l ON l.id = s.location_id
+  LEFT JOIN tracks t ON t.id = s.track_id
+  LEFT JOIN session_speakers ss ON ss.session_id = s.id
+  LEFT JOIN speakers sp ON sp.id = ss.speaker_id
+  GROUP BY s.id, d.id, t.id, l.id
+  ORDER BY d.event_date, s.start_time, s.end_time, s.id`;
+
+async function loadSchedule() {
+  const { rows } = await pool.query(SCHEDULE_QUERY);
+  return rows;
+}
+
+const locationLabel = (s) => [s.venue, s.floor, s.room].filter(Boolean).join(' · ');
+
+function scheduleHtml(schedule) {
+  if (schedule.length === 0) return '<p class="text-body-secondary">No sessions loaded.</p>';
+  const days = new Map();
+  for (const s of schedule) {
+    if (!days.has(s.date)) days.set(s.date, { label: s.day, sessions: [] });
+    days.get(s.date).sessions.push(s);
+  }
+  return [...days.values()]
+    .map((day) => {
+      const rows = day.sessions
+        .map((s) => {
+          const meta = [s.track, s.format].filter(Boolean).map(escapeHtml).join(' · ');
+          const speakers = s.speakers ? `<div class="small text-body-secondary">${escapeHtml(s.speakers)}</div>` : '';
+          const notes = s.notes ? `<span class="badge text-bg-warning ms-1">${escapeHtml(s.notes)}</span>` : '';
+          return `<tr><td class="text-nowrap">${escapeHtml(s.start_time)}&ndash;${escapeHtml(s.end_time)}</td>
+<td><div>${escapeHtml(s.title)}${notes}</div><div class="small text-body-secondary">${meta}</div>${speakers}</td>
+<td class="small">${escapeHtml(locationLabel(s))}</td></tr>`;
+        })
+        .join('');
+      return `<h2 class="h5 mt-4 mb-2">${escapeHtml(day.label)}</h2>
+<div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover mb-0">
+<thead><tr><th>Time</th><th>Session</th><th>Location</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    })
+    .join('');
+}
 
 let schemaReady = false;
 
@@ -259,6 +309,7 @@ async function route(req, res, url) {
   }
 
   if (url.pathname === '/api/sessions') {
+    const sessions = await loadSchedule();
     return send(res, 200, 'application/json', JSON.stringify({ version, user: user.username, sessions }));
   }
   if (url.pathname === '/map') {
@@ -306,12 +357,7 @@ async function route(req, res, url) {
 </main>`));
   }
   if (url.pathname === '/') {
-    const rows = sessions
-      .map(
-        (s) =>
-          `<tr><td>${escapeHtml(s.time)}</td><td>${escapeHtml(s.room)}</td><td>${escapeHtml(s.title)}</td></tr>`,
-      )
-      .join('');
+    const schedule = scheduleHtml(await loadSchedule());
     return send(
       res,
       200,
@@ -325,11 +371,11 @@ async function route(req, res, url) {
 <form method="post" action="/logout" class="m-0"><button class="btn btn-outline-secondary btn-sm">Log out</button></form>
 </div></div></nav>
 <main class="container py-4">
-<h1 class="h4 mb-3">Schedule</h1>
-<div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover mb-0">
-<thead><tr><th>Time</th><th>Room</th><th>Session</th></tr></thead><tbody>${rows}</tbody></table></div></div>
-<p class="mt-3"><a href="/map">Explore the Salt Palace map</a></p>
-<p><a href="/event-rooms">Verify event room mappings</a></p>
+<h1 class="h4 mb-1">Schedule</h1>
+<p class="text-body-secondary small mb-0">KubeCon + CloudNativeCon NA 2026. Partial: Sunday through Tuesday midday.</p>
+${schedule}
+<p class="mt-4"><a href="/map">Explore the Salt Palace map</a></p>
+<p><a href=\"/event-rooms\">Verify event room mappings</a></p>
 <p class="text-body-secondary small">version ${escapeHtml(version)}</p>
 </main>`,
       ),
