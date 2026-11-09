@@ -38,8 +38,9 @@
  // Restore the original title on every row (the ES highlight replaces it while a query is active)
  // and pin the track option values so the dropdown keeps filtering on the bare track name.
  all.forEach(row => { row.dataset.title = row.querySelector('.session-title').textContent; });
- const trackOrig = new Map([...track.options].map(option => [option.textContent, option.textContent]));
- [...track.options].forEach(option => { option.value = option.textContent; });
+ const trackOrig = new Map([...track.options].map(option => [option.value, option.textContent]));
+ // Materialize implicit values before facet labels change; keep All tracks empty.
+ [...track.options].forEach(option => { option.value = option.value; });
  // Elasticsearch-backed search state. When es.dead the UI keeps the original
  // client-side substring filter, so the app works without Elasticsearch.
  const es = { dead: false, results: null, facets: null, key: '', req: 0 };
