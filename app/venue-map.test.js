@@ -117,3 +117,4 @@ test('room mapping links open the event assignment rather than its shared locati
  assert.match(html, /href="\/map\?event=42"/);
  assert.ok(!html.includes('/map?location=2'));
 });
+// TODO(schedule-completion): Verify new event destinations and hall-level versus exact room/meeting-point accuracy.

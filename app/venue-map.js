@@ -1,6 +1,7 @@
 (function(root) {
  'use strict';
  const indoorVenues = ['Salt Palace', 'Hyatt Regency'];
+ // TODO(schedule-completion): Add verified Edison House and Hyatt lobby destinations; distinguish venue pins from room geometry.
  function isUpcoming(event, now = Date.now()) {
   return new Date(event.ends_at).getTime() > now;
  }

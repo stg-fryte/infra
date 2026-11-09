@@ -22,6 +22,7 @@
   return [106+(lat-40.7654077)*589/(40.7686451-40.7654077),196+(lng+111.8994612)*449/(-111.8963461+111.8994612)];
  }
  function saltPoints(room, floor) {
+  // TODO(schedule-completion): Support verified foyer/mezzanine areas and Park City/lobby destinations where drawings permit.
   if (room.boundary?.type === 'Point') return floor === 1 ? [saltCoordinate(room.boundary.coordinates)] : null;
   const match = /^(250|251)([A-F])$/.exec(room.name);
   if (floor === 2 && match) {

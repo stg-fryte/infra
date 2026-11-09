@@ -2,3 +2,4 @@
 -- TODO(schedule-completion): Reverse only rows inserted by 009_complete_schedule.sql, in foreign-key-safe order.
 -- Retain imported sessions with subsequent user saves/Bingo activity rather than destroying user data.
 -- Remove imported shared lookup rows only when no remaining data references them.
+-- Restore prior hidden flags for existing entries excluded by the actual-events policy.

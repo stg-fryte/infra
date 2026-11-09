@@ -1,9 +1,13 @@
 -- PROPOSAL ONLY: implement after approval; do not merge this placeholder.
 -- Source: https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/program/schedule/
 -- TODO(schedule-completion): Backfill remaining Tuesday sessions and Wednesday/Thursday, November 10-12, 2026.
+-- Import actual programmed events; exclude logistics, breaks, general expo/poster/kiosk opening hours.
+-- Hide existing ineligible entries while preserving IDs/user data and recording their previous hidden state.
 -- Reuse existing days/tracks/locations/speakers; allocate new session IDs without replacing existing rows.
 -- Match source rows against existing date/time/title/location, accounting for abbreviated seed titles.
 -- Preserve hidden Coat + Bag Check entries and existing saved sessions, Bingo data, and room overrides.
 -- Populate session_rooms from existing location_rooms; leave genuinely unmapped locations explicit.
+-- Verify new Park City, lobby, Upper Mezzanine, North Grand Ballroom Foyer, and Edison House destinations.
+-- Normalize source room aliases (including Regency B); distinguish hall-level coverage from exact booth positions.
 -- Store local Mountain Time; represent midnight end times as PostgreSQL TIME '24:00' and verify API timestamps.
 -- Record exactly which rows this migration inserts so rollback cannot delete unrelated records.
