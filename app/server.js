@@ -380,7 +380,7 @@ async function route(req, res, url) {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
     const { rows } = await pool.query(`
       SELECT days.label AS day, to_char(sessions.start_time, 'HH12:MI AM') AS time,
-             sessions.title, concat_ws(' | ', locations.venue, locations.level, locations.room) AS location,
+             sessions.title, locations.id AS location_id, concat_ws(' | ', locations.venue, locations.level, locations.room) AS location,
              string_agg(rooms.name, ', ' ORDER BY rooms.name) AS resolved_rooms
       FROM sessions
       JOIN days ON days.id = sessions.day_id
@@ -390,20 +390,7 @@ async function route(req, res, url) {
       GROUP BY sessions.id, days.id, locations.id
       ORDER BY days.event_date, sessions.start_time, sessions.id
     `);
-    const eventRows = rows.map((event) => {
-      const cells = [event.day, event.time.trimStart(), event.title, event.location,
-        event.resolved_rooms ?? 'No room mapped'];
-      return `<tr>${cells.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`;
-    }).join('');
-    return send(res, 200, 'text/html; charset=utf-8', page('Event room mappings', `
-<main class="container py-4">
-<p><a href="/">Back to schedule</a></p>
-<h1 class="h4">Event room mappings</h1>
-<p>${rows.filter((event) => event.resolved_rooms !== null).length} of ${rows.length} events have mapped rooms.</p>
-<div class="table-responsive"><table class="table table-hover">
-<thead><tr><th>Day</th><th>Start</th><th>Event</th><th>Schedule location</th><th>Resolved rooms</th></tr></thead>
-<tbody>${eventRows}</tbody></table></div>
-</main>`));
+    return send(res, 200, 'text/html; charset=utf-8', ui.roomMappings(rows, { team, version, user }));
   }
   if (url.pathname === '/') {
     const schedule = await loadSchedule();
