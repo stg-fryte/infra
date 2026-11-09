@@ -59,7 +59,7 @@ function scheduleHtml(schedule) {
           const speakers = s.speakers ? `<div class="small text-body-secondary">${escapeHtml(s.speakers)}</div>` : '';
           const notes = s.notes ? `<span class="badge text-bg-warning ms-1">${escapeHtml(s.notes)}</span>` : '';
           return `<tr><td class="text-nowrap">${escapeHtml(s.start_time)}&ndash;${escapeHtml(s.end_time)}</td>
-<td><div><a href="/map?location=${s.location_id}">${escapeHtml(s.title)}</a>${notes} <a class="small ms-1" href="/bingo/${s.id}" target="_blank" rel="noopener">Buzzword Bingo</a></div><div class="small text-body-secondary">${meta}</div>${speakers}</td>
+<td><div><a href="/map?location=${s.location_id}">${escapeHtml(s.title)}</a>${notes}${s.games.includes('bingo') ? ` <a class="small ms-1" href="/bingo/${s.id}" target="_blank" rel="noopener">Buzzword Bingo</a>` : ''}</div><div class="small text-body-secondary">${meta}</div>${speakers}</td>
 <td class="small">${escapeHtml(locationLabel(s))}</td></tr>`;
         })
         .join('');

@@ -13,7 +13,8 @@ const SESSION_SQL = `SELECT s.id, s.title, s.notes, t.name AS track,
   LEFT JOIN users w ON w.id=p.winner_user_id`;
 
 async function loadSession(db, id) {
-  return (await db.query(`${SESSION_SQL} WHERE s.id=$1 AND NOT s.hidden`, [id])).rows[0] || null;
+  return (await db.query(`${SESSION_SQL} WHERE s.id=$1 AND NOT s.hidden
+    AND EXISTS (SELECT 1 FROM session_games g WHERE g.session_id=s.id AND g.game='bingo')`, [id])).rows[0] || null;
 }
 
 async function loadCard(db, userId, sessionId) {
