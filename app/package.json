@@ -5,7 +5,8 @@
   "description": "Starter app for the Radar AI SRE track at the Cloud Native Hackathon",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "migrate:down": "node rollback.js"
   },
   "dependencies": {
     "bootstrap": "^5.3.3",

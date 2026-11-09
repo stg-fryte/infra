@@ -4,6 +4,8 @@ const { readFile } = require('node:fs/promises');
 const path = require('node:path');
 const { randomBytes, scryptSync, createHash, timingSafeEqual } = require('node:crypto');
 const { Pool } = require('pg');
+const { MIGRATIONS_DIR, MIGRATION_FILE, MIGRATION_LOCK_KEY } = require('./migrationConfig');
+const { GRID_SIZE, FREE_INDEX, buildCard, isMarkableIndex, winningLines } = require('./bingo');
 
 const port = Number(process.env.PORT || 8080);
 const team = process.env.TEAM_NAME || 'your-team';
@@ -21,9 +23,6 @@ const MAX_BODY_BYTES = 4096;
 const USERNAME_PATTERN = /^[a-z0-9_.-]{3,32}$/;
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 128;
-const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
-const MIGRATION_FILE = /^\d+_[a-z0-9_]+\.sql$/;
-const MIGRATION_LOCK_KEY = 727001;
 const BOOTSTRAP_CSS_URL = '/static/bootstrap.min.css';
 const bootstrapCss = fs.readFileSync(require.resolve('bootstrap/dist/css/bootstrap.min.css'));
 
@@ -73,7 +72,7 @@ function scheduleHtml(schedule) {
           const speakers = s.speakers ? `<div class="small text-body-secondary">${escapeHtml(s.speakers)}</div>` : '';
           const notes = s.notes ? `<span class="badge text-bg-warning ms-1">${escapeHtml(s.notes)}</span>` : '';
           return `<tr><td class="text-nowrap">${escapeHtml(s.start_time)}&ndash;${escapeHtml(s.end_time)}</td>
-<td><div>${escapeHtml(s.title)}${notes}</div><div class="small text-body-secondary">${meta}</div>${speakers}</td>
+<td><div>${escapeHtml(s.title)}${notes} <a class="small ms-1" href="/bingo/${s.id}">Buzzword Bingo</a></div><div class="small text-body-secondary">${meta}</div>${speakers}</td>
 <td class="small">${escapeHtml(locationLabel(s))}</td></tr>`;
         })
         .join('');
@@ -278,6 +277,107 @@ async function handleLogout(req, res) {
   send(res, 303, 'text/plain', '', { location: '/login', 'set-cookie': sessionCookie('', 0) });
 }
 
+const BINGO_PATH = /^\/bingo\/(\d{1,9})(\/mark)?$/;
+
+async function loadBingoSession(sessionId) {
+  const { rows } = await pool.query(
+    `SELECT s.id, s.title, t.name AS track, p.prize, p.winner_user_id, w.username AS winner
+     FROM sessions s
+     LEFT JOIN tracks t ON t.id = s.track_id
+     LEFT JOIN session_prizes p ON p.session_id = s.id
+     LEFT JOIN users w ON w.id = p.winner_user_id
+     WHERE s.id = $1`,
+    [sessionId],
+  );
+  return rows[0] || null;
+}
+
+async function loadOrCreateCard(userId, session) {
+  await pool.query(
+    `INSERT INTO bingo_cards (user_id, session_id, cells) VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, session_id) DO NOTHING`,
+    [userId, session.id, JSON.stringify(buildCard(session))],
+  );
+  const { rows } = await pool.query(
+    'SELECT cells, marked, bingo_at FROM bingo_cards WHERE user_id = $1 AND session_id = $2',
+    [userId, session.id],
+  );
+  return rows[0];
+}
+
+function bingoHtml(user, session, card) {
+  const marked = new Set(card.marked);
+  const winning = new Set(winningLines(card.marked).flat());
+  const cells = card.cells
+    .map((word, index) => {
+      const isFree = index === FREE_INDEX;
+      const style = winning.has(index) ? 'btn-success' : marked.has(index) ? 'btn-primary' : 'btn-outline-secondary';
+      const disabled = isFree ? ' disabled' : '';
+      return `<button class="btn ${style} w-100 h-100 p-1 small" style="min-height:5rem;overflow-wrap:anywhere" name="cell" value="${index}"${disabled}>${escapeHtml(word)}</button>`;
+    })
+    .join('');
+  let status;
+  if (session.winner_user_id === user.id) {
+    status = `<div class="alert alert-success">You got Bingo first! Prize: <strong>${escapeHtml(session.prize)}</strong>. Show this screen at the session.</div>`;
+  } else if (card.bingo_at) {
+    status = `<div class="alert alert-info">Bingo! <strong>${escapeHtml(session.winner || 'Another player')}</strong> got there first and claimed the prize.</div>`;
+  } else if (session.winner) {
+    status = `<div class="alert alert-secondary">Prize already claimed by <strong>${escapeHtml(session.winner)}</strong>. You can still play for fun.</div>`;
+  } else {
+    status = '<div class="alert alert-warning">First player to get 5 in a row wins the prize.</div>';
+  }
+  const prize = session.prize ? `<p class="mb-3">Prize: <strong>${escapeHtml(session.prize)}</strong></p>` : '';
+  return page(
+    `Buzzword Bingo: ${session.title}`,
+    `<nav class="navbar bg-body border-bottom"><div class="container"><a class="navbar-brand" href="/">${escapeHtml(team)}</a>
+<span class="text-body-secondary small">${escapeHtml(user.username)}</span></div></nav>
+<main class="container py-4" style="max-width:40rem">
+<h1 class="h4 mb-1">Buzzword Bingo</h1>
+<p class="text-body-secondary mb-2">${escapeHtml(session.title)}</p>${prize}${status}
+<form method="post" action="/bingo/${session.id}/mark" style="display:grid;grid-template-columns:repeat(${GRID_SIZE},1fr);gap:.4rem">${cells}</form>
+<p class="small text-body-secondary mt-3">Tap a word when the speaker says it. Reload to see if the prize is taken.</p>
+<p><a href="/">Back to schedule</a></p></main>`,
+  );
+}
+
+async function handleBingoMark(req, res, user, session) {
+  const index = Number((await readForm(req)).get('cell'));
+  if (isMarkableIndex(index)) {
+    await loadOrCreateCard(user.id, session);
+    const { rows } = await pool.query(
+      `UPDATE bingo_cards
+       SET marked = CASE WHEN $3 = ANY(marked) THEN array_remove(marked, $3) ELSE array_append(marked, $3) END
+       WHERE user_id = $1 AND session_id = $2
+       RETURNING marked`,
+      [user.id, session.id, index],
+    );
+    if (winningLines(rows[0].marked).length > 0) {
+      await pool.query(
+        'UPDATE bingo_cards SET bingo_at = now() WHERE user_id = $1 AND session_id = $2 AND bingo_at IS NULL',
+        [user.id, session.id],
+      );
+      await pool.query(
+        `UPDATE session_prizes SET winner_user_id = $1, won_at = now()
+         WHERE session_id = $2 AND winner_user_id IS NULL`,
+        [user.id, session.id],
+      );
+    }
+  }
+  send(res, 303, 'text/plain', '', { location: `/bingo/${session.id}` });
+}
+
+async function handleBingo(req, res, user, match) {
+  const session = await loadBingoSession(Number(match[1]));
+  if (!session) return send(res, 404, 'text/plain', 'not found\n');
+  if (match[2]) {
+    if (req.method !== 'POST') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'POST' });
+    return handleBingoMark(req, res, user, session);
+  }
+  if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
+  const card = await loadOrCreateCard(user.id, session);
+  return send(res, 200, 'text/html; charset=utf-8', bingoHtml(user, session, card));
+}
+
 async function route(req, res, url) {
   if (url.pathname === '/healthz') return send(res, 200, 'text/plain', 'ok\n');
   if (url.pathname === BOOTSTRAP_CSS_URL && req.method === 'GET') {
@@ -307,6 +407,9 @@ async function route(req, res, url) {
     }
     return send(res, 303, 'text/plain', '', { location: '/login' });
   }
+
+  const bingoMatch = BINGO_PATH.exec(url.pathname);
+  if (bingoMatch) return handleBingo(req, res, user, bingoMatch);
 
   if (url.pathname === '/api/sessions') {
     const sessions = await loadSchedule();
