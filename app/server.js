@@ -134,6 +134,7 @@ function authForm(kind, error) {
 <form method="post" action="/${kind}">
 <p><label>Username <input name="username" required autocomplete="username"></label></p>
 <p><label>Password <input name="password" type="password" required autocomplete="${isRegister ? 'new-password' : 'current-password'}"></label></p>
+${isRegister ? '<p><label>Confirm password <input name="confirm" type="password" required autocomplete="new-password"></label></p>' : ''}
 ${hint}<p><button>${heading}</button></p></form><p>${other}</p>`,
   );
 }
@@ -147,6 +148,9 @@ async function handleRegister(req, res) {
   }
   if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) {
     return send(res, 400, 'text/html; charset=utf-8', authForm('register', `Password must be ${PASSWORD_MIN}-${PASSWORD_MAX} characters`));
+  }
+  if (password !== (form.get('confirm') || '')) {
+    return send(res, 400, 'text/html; charset=utf-8', authForm('register', 'Passwords do not match'));
   }
   const salt = randomBytes(16);
   const { rows } = await pool.query(
