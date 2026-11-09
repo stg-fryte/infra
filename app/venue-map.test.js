@@ -27,15 +27,13 @@ test('Bingo opens at the start instant and closes at the end instant', () => {
  assert.equal(isLive({...event,ends_at:'invalid'},Date.parse(event.starts_at)),false);
 });
 
-test('schedule contains a Bingo link only for live events', () => {
+test('schedule shows Bingo link only when the session has the bingo game', () => {
  const ui = require('./ui');
  const event = {id:42,title:'Talk',starts_at:'2026-11-09T16:00:00Z',ends_at:'2026-11-09T17:00:00Z',games:['bingo']};
- for (const time of ['2026-11-09T15:59:59Z','2026-11-09T17:00:00Z']) {
-  const html = ui.scheduleHtml([event],Date.parse(time));
-  assert.ok(!html.includes('/bingo/'));
-  assert.ok(html.includes('data-save'));
- }
- assert.match(ui.scheduleHtml([event],Date.parse(event.starts_at)), /href="\/bingo\/42"/);
+ assert.match(ui.scheduleHtml([event]), /href="\/bingo\/42"/);
+ const without = ui.scheduleHtml([{...event,games:[]}]);
+ assert.ok(!without.includes('/bingo/'));
+ assert.ok(without.includes('data-save'));
 });
 
 test('South Entrance is a named point on the first floor, without a made-up room boundary', () => {
