@@ -34,12 +34,64 @@ block requests. Changing the Secret requires a GitOps rollout to reload env vars
 
 ## Dashboard
 
-Import `dash0-dashboard.json` using Dashboards → Add → Edit as JSON. Use the default
+The deployed app and Dash0 credential configuration stay live. The demo-data
+follow-up is PR #14; merging it is user-controlled.
+
+Import `dash0-dashboard.json` using Dashboards → Create → New dashboard → Edit as JSON. Use the default
 dataset. Enter a numeric Session ID from the application's results URL, or `.*`
 for all sessions. Tables use instant values so an unmark can reduce the current
 count. Aggregate gauges use `max by(session_id,word)` across replicas, never sum;
 the final flag uses min so a lagging replica keeps the display provisional.
 Request counters are per-process and use sum of rates. Freshness uses min.
+
+The saved dashboard is **Kube Companion · Bingo & service health**, ID
+`31f43562-74ef-4483-8df0-2f28b6c00adc`, in organization `wemakedevs2026-stg-fryte`.
+Its real-data panels were verified against live OTLP data: participating accounts,
+word exposure, report counts/rates, freshness, request rates and HTTP error rates.
+Separate panels prefixed **DEMO** query only `bingo_demo_*`; they stay empty until
+the demo implementation is merged and deployed. No synthetic data was sent during
+browser validation.
+
+## Synthetic past-event examples
+
+`BINGO_DEMO_RESULTS=true` enables deterministic aggregate samples for completed
+talks, workshops and substantive co-located events with **zero eligible attendee
+cards**. Samples appear only after the ten-minute correction window closes. Any
+real eligible card takes precedence, even when it has no marked words. HTML shows
+“Synthetic demo data” and “simulated participants”; JSON has `source: synthetic`
+or `source: attendee` (string values).
+
+The generator uses the existing card generator to create one fixed 25-cell demo
+card per event, then simulates 24–96 participants using those exact choices. The
+word cloud and table contain only the card's 24 non-FREE choices; each choice's
+exposure equals the simulated participant count. The read-only demo card is shown
+in a disclosure above the cloud, and JSON includes its `choices`. It creates no
+accounts, stored cards, clicks or prize winners and never changes database data.
+The fixed v1 seed makes repeated reads stable. Aggregate metrics remain under
+`bingo_*`; invented samples use separate `bingo_demo_*` instruments.
+
+Both sources share the styled word cloud: stable colors per word, weighted type,
+and counts available on focus/hover and in the existing table. Only synthetic
+results include the dot timeline. Its `timeline` JSON contains the scheduled
+duration and deterministic one-minute counts that sum to each word's existing
+report total. The display combines minutes into at most 30 groups for legibility
+on longer events, with a matching accessible table. Dot area encodes count using
+one scale across all rows; colors match the cloud. Zero-report choices remain.
+Missing or invalid scheduled times produce `timeline: null` and an unavailable
+message. No timestamps are collected for real marks, and timing is not exported
+to Dash0. The plot covers scheduled event time; a separate note explains the
+ten-minute correction window afterward. All demo timing is explicitly invented.
+
+In demo mode, history excludes registration, coat/bag checks, coffee/lunch breaks,
+opening/closing remarks, expo listings and generic project-overview placeholders.
+Known talks, keynotes, maintainer sessions, contribution sessions, scheduled
+experiences, sponsored demos and tours qualify. The named Rego technical talk is explicitly included
+despite its source schedule's erroneous Break format. Unsupported formats are
+conservatively excluded. Upcoming schedule behavior is unchanged.
+
+Disable the environment flag through GitOps to remove sample results. Saved real
+cards remain unaffected. Changing the generator/vocabulary can change synthetic
+samples on a later release; these are illustrative fixtures, not historical records.
 
 Only aggregate session/word counts and allowlisted route/method/status/database
 operation labels are exported. There are no usernames, account IDs, IPs, cookies,
@@ -54,3 +106,8 @@ to a disposable local Postgres admin connection; the suite creates and removes i
 own temporary database. Do not point this at the conference database. Tests cover
 cutoff boundaries, lock waits, retries, retractions, privacy, authentication,
 exposure denominators, OTLP failure isolation and request draining on SIGTERM.
+
+PR validation also covers deterministic samples, event eligibility, real-report
+precedence, post-cutoff generation, synthetic labels in HTML/JSON, no card creation,
+and separate/retired demo metric series. The complete local suite passed 43 tests
+against disposable PostgreSQL. Desktop and 390px phone layouts were inspected.

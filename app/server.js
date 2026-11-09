@@ -11,6 +11,8 @@ const { FREE_INDEX, winningLines } = require('./bingo');
 const { bingoWindow } = require('./bingo');
 const bingoStore = require('./bingo-store');
 const resultsUi = require('./results-ui');
+const { demoResults, isActualEvent } = require('./demo-results');
+const demoEnabled = process.env.BINGO_DEMO_RESULTS === 'true';
 const { createObservability, instrumentPool } = require('./observability');
 const { SCHEDULE_QUERY } = require('./scheduleQuery');
 const { searchSessions, suggestTitles, SearchUnavailable } = require('./sessionsSearch');
@@ -383,13 +385,15 @@ async function route(req, res, url) {
 
   if (url.pathname === '/history') {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
-    return send(res, 200, 'text/html; charset=utf-8', resultsUi.historyPage(await loadSchedule(true), { team, version }));
+    const history = await loadSchedule(true);
+    return send(res, 200, 'text/html; charset=utf-8', resultsUi.historyPage(demoEnabled ? history.filter(isActualEvent) : history, { team, version, demoEnabled }));
   }
   const resultMatch = /^\/(api\/sessions\/(\d{1,9})\/buzzwords|sessions\/(\d{1,9})\/results)$/.exec(url.pathname);
   if (resultMatch) {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
-    const result = await bingoStore.loadResults(pool, Number(resultMatch[2] || resultMatch[3]));
+    let result = await bingoStore.loadResults(pool, Number(resultMatch[2] || resultMatch[3]));
     if (!result) return send(res, 404, 'text/plain', 'not found\n');
+    if (demoEnabled) result = demoResults(result) || result;
     if (resultMatch[2]) return send(res, 200, 'application/json', JSON.stringify(result));
     const session = await bingoStore.loadSession(pool, result.id);
     return send(res, 200, 'text/html; charset=utf-8', resultsUi.resultsPage(result, { team, version, session }));
@@ -510,7 +514,9 @@ async function refreshAggregates() {
       const client = await pool.connect();
       return { query: (text, values) => client.query({ text, values, query_timeout: 4000 }), release: () => client.release() };
     } };
-    telemetry.updateResults(await bingoStore.loadAllResults(boundedDb));
+    const results = await bingoStore.loadAllResults(boundedDb);
+    telemetry.updateResults(results);
+    telemetry.updateDemoResults(demoEnabled ? results.map(demoResults).filter(Boolean) : []);
   } catch {
     console.error('bingo aggregate refresh failed');
   } finally { refreshing = false; }

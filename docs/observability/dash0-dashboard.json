@@ -1,12 +1,16 @@
 {
-  "kind": "Dashboard",
+  "apiVersion": "perses.dev/v1alpha1",
+  "kind": "PersesDashboard",
   "metadata": {
+    "labels": {
+      "dash0.com/dataset": "default"
+    },
     "name": "kube-companion-bingo"
   },
   "spec": {
     "display": {
       "name": "Kube Companion · Bingo & service health",
-      "description": "Account reports, not speech counts. Max across app replicas prevents double counting. Select a session ID; .* shows all sessions. Results close 10 minutes after scheduled end. The app has exact expected-word tables and word clouds."
+      "description": "Account reports, not speech counts. Max across app replicas prevents double counting. Select a session ID; .* shows all sessions. Results close 10 minutes after scheduled end. The app has exact expected-word tables and word clouds. DEMO panels contain invented sample results, never real attendee responses."
     },
     "duration": "1h",
     "refreshInterval": "30s",
@@ -232,6 +236,118 @@
             }
           ]
         }
+      },
+      "demo_participants": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "DEMO · Participating accounts",
+            "description": "Synthetic invented data, separate from attendee reports. Appears only after PR #14 is merged."
+          },
+          "plugin": {
+            "kind": "TimeSeriesTable",
+            "spec": {
+              "calculation": "instant"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max by (session_id) ({otel_metric_name=\"bingo_demo_participants\",session_id=~\"$session\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "demo_reported": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "DEMO · Reported by word",
+            "description": "Synthetic invented data, separate from attendee reports. Appears only after PR #14 is merged."
+          },
+          "plugin": {
+            "kind": "TimeSeriesTable",
+            "spec": {
+              "calculation": "instant"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max by (session_id, word) ({otel_metric_name=\"bingo_demo_word_reported\",session_id=~\"$session\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "demo_shown": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "DEMO · Cards showing each word",
+            "description": "Synthetic invented data, separate from attendee reports. Appears only after PR #14 is merged."
+          },
+          "plugin": {
+            "kind": "TimeSeriesTable",
+            "spec": {
+              "calculation": "instant"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max by (session_id, word) ({otel_metric_name=\"bingo_demo_word_shown\",session_id=~\"$session\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "demo_rate": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "DEMO · Report rate (reports / cards shown)",
+            "description": "Synthetic invented data, separate from attendee reports. Appears only after PR #14 is merged."
+          },
+          "plugin": {
+            "kind": "TimeSeriesTable",
+            "spec": {
+              "calculation": "instant"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max by (session_id, word) ({otel_metric_name=\"bingo_demo_word_reported\",session_id=~\"$session\"}) / max by (session_id, word) ({otel_metric_name=\"bingo_demo_word_shown\",session_id=~\"$session\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
       }
     },
     "layouts": [
@@ -309,6 +425,42 @@
               "height": 8,
               "content": {
                 "$ref": "#/spec/panels/errors"
+              }
+            },
+            {
+              "x": 0,
+              "y": 32,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/demo_participants"
+              }
+            },
+            {
+              "x": 12,
+              "y": 32,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/demo_reported"
+              }
+            },
+            {
+              "x": 0,
+              "y": 40,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/demo_shown"
+              }
+            },
+            {
+              "x": 12,
+              "y": 40,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/demo_rate"
               }
             }
           ]

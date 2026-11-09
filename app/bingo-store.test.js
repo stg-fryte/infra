@@ -28,6 +28,7 @@ test('Postgres enforces bingo deadlines and aggregates distinct current reports'
     ON CONFLICT(event_date) DO UPDATE SET label=EXCLUDED.label RETURNING id`);
   const { rows: [session] } = await pool.query(`INSERT INTO sessions(day_id,start_time,end_time,title,format,location_id)
     VALUES ($1,'00:00','23:59','Kubernetes testing','Talk',1) RETURNING id`, [day.id]);
+  await pool.query("INSERT INTO session_games(session_id,game) VALUES($1,'bingo')",[session.id]);
   const setEnd = async (interval) => {
     await pool.query(`UPDATE sessions SET end_time=((clock_timestamp()+$2::interval) AT TIME ZONE 'America/Denver')::time WHERE id=$1`, [session.id,interval]);
   };
@@ -122,9 +123,12 @@ test('Postgres enforces bingo deadlines and aggregates distinct current reports'
     const { createHash } = require('node:crypto');
     const { setTimeout: delay } = require('node:timers/promises');
     const token = 'local-integration-session';
+    const {rows:[pastDay]}=await pool.query(`INSERT INTO days(event_date,label) VALUES(current_date-1,'Past test') ON CONFLICT(event_date) DO UPDATE SET label=EXCLUDED.label RETURNING id`);
+    const {rows:[demoSession]}=await pool.query(`INSERT INTO sessions(day_id,start_time,end_time,title,format,location_id) VALUES($1,'10:00','11:00','Demo database isolation','Talk',1) RETURNING id`,[pastDay.id]);
+    await pool.query("INSERT INTO session_games(session_id,game) VALUES($1,'bingo')",[demoSession.id]);
     await pool.query(`INSERT INTO user_sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')`,
       [createHash('sha256').update(token).digest(),user]);
-    const child = spawn(process.execPath,['server.js'],{cwd:__dirname,env:{...process.env,DATABASE_URL:url.toString(),PORT:'55440',METRICS_PORT:'55441',OTEL_EXPORTER_OTLP_ENDPOINT:''},stdio:['ignore','pipe','pipe']});
+    const child = spawn(process.execPath,['server.js'],{cwd:__dirname,env:{...process.env,DATABASE_URL:url.toString(),PORT:'55440',METRICS_PORT:'55441',OTEL_EXPORTER_OTLP_ENDPOINT:'',BINGO_DEMO_RESULTS:'true'},stdio:['ignore','pipe','pipe']});
     t.after(async()=>{if(child.exitCode === null){child.kill(); await once(child,'exit');}});
     let logs=''; child.stdout.on('data',data=>{logs+=data;}); child.stderr.on('data',data=>{logs+=data;});
     const base = 'http://127.0.0.1:55440';
@@ -137,11 +141,23 @@ test('Postgres enforces bingo deadlines and aggregates distinct current reports'
     const request=(route,options={})=>fetch(base+route,{redirect:'manual',...options,headers:{cookie:`sid=${token}`,...options.headers}});
     assert.equal((await fetch(base+`/api/sessions/${session.id}/buzzwords`)).status,401);
     const history = await request('/history'); assert.equal(history.status,200);
-    assert.match(await history.text(),/Kubernetes testing/);
+    const historyHtml=await history.text();
+    assert.match(historyHtml,/Kubernetes testing/);
+    assert.doesNotMatch(historyHtml,/Registration \+ Badge Pick-Up|Coffee Break|Coat \+ Bag Check/);
     const before = (await pool.query('SELECT count(*) AS count FROM bingo_cards')).rows[0].count;
     assert.equal((await request(`/sessions/${session.id}/results`)).status,200);
     const result = await (await request(`/api/sessions/${session.id}/buzzwords`)).json();
     assert.equal(result.final,true); assert.equal(result.participants,2);
+    assert.equal(result.source,'attendee');
+    const demo=await (await request(`/api/sessions/${demoSession.id}/buzzwords`)).json();
+    assert.equal(demo.source,'synthetic');assert.ok(demo.participants>0);
+    assert.equal((Date.parse(demo.ends_at)-Date.parse(demo.starts_at))/60000,60);
+    assert.equal(demo.timeline.durationMinutes,60);
+    assert.deepEqual(demo.timeline.words.map(w=>w.buckets.reduce((n,b)=>n+b.count,0)),demo.words.map(w=>w.reported));
+    assert.equal(result.timeline,undefined);
+    assert.match(await (await request(`/sessions/${demoSession.id}/results`)).text(),/Synthetic demo data/);
+    assert.match(await (await request(`/bingo/${demoSession.id}`)).text(),/New cards are closed/);
+    assert.equal(await store.loadCard(pool,user,demoSession.id),null);
     assert.equal((await pool.query('SELECT count(*) AS count FROM bingo_cards')).rows[0].count,before);
     await t.test('winner claim remains accessible through corrections and read-only reloads', async () => {
       await pool.query('UPDATE session_prizes SET winner_user_id=$1, won_at=clock_timestamp() WHERE session_id=$2',[user,session.id]);
