@@ -48,6 +48,8 @@ jobs:
             ${{ steps.meta.outputs.image }}:latest
           labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
+      # TODO: publish the generated image-tag change on a branch and open a PR;
+      # main requires pull requests and rejects the current direct push.
       - name: Point the manifests at the new image
         env:
           IMAGE: ${{ steps.meta.outputs.image }}
