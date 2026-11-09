@@ -5,16 +5,16 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: app
-  namespace: team-__TEAM__
+  namespace: team-stg-fryte
 spec:
-  project: team-__TEAM__
+  project: team-stg-fryte
   source:
-    repoURL: https://github.com/OWNER/REPO.git
+    repoURL: https://github.com/stg-fryte/infra.git
     targetRevision: main
     path: deploy
   destination:
     server: https://kubernetes.default.svc
-    namespace: team-__TEAM__
+    namespace: team-stg-fryte
   syncPolicy:
     automated:
       prune: true
