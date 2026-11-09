@@ -33,7 +33,7 @@ test('schedule migration imports actual events, maps them, and safely rolls back
  try {
   await db.query(`CREATE SCHEMA ${schema}`);
   await db.query(`SET search_path TO ${schema}`);
-  for (const file of fs.readdirSync(migrationDir).filter(f=>/^00[1-8]_.*(?<!\.down)\.sql$/.test(f)).sort()) await apply(file);
+  for (const file of fs.readdirSync(migrationDir).filter(f=>/^\d+_[a-z0-9_]+\.sql$/.test(f) && f < '009_complete_schedule.sql').sort()) await apply(file);
   const baseline = await rows('SELECT id, title, hidden FROM sessions ORDER BY id');
   const [{id:userId}] = await rows("INSERT INTO users(username,password_salt,password_hash) VALUES ('test', '\\x01', '\\x02') RETURNING id");
   await db.query('INSERT INTO saved_sessions(user_id,session_id) VALUES ($1,83)',[userId]);

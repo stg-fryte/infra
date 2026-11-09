@@ -6,6 +6,32 @@ const { TRACK_BUZZWORDS, CELL_COUNT, FREE_INDEX, buildCard, titleBuzzwords, isMa
 
 const session = { title: 'Securing Supply Chains with Sigstore', track: 'Security' };
 
+test('new cards close at event end and corrections close exactly ten minutes later', () => {
+  const { bingoWindow } = require('./bingo');
+  const end = '2026-11-09T23:00:00Z';
+  for (const [now, start, edit, final] of [
+    ['2026-11-09T22:59:59.999Z', true, true, false],
+    ['2026-11-09T23:00:00Z', false, true, false],
+    ['2026-11-09T23:09:59.999Z', false, true, false],
+    ['2026-11-09T23:10:00Z', false, false, true],
+  ]) {
+    const window = bingoWindow(end, Date.parse(now));
+    assert.equal(window.canStart, start, now);
+    assert.equal(window.canEdit, edit, now);
+    assert.equal(window.final, final, now);
+    assert.equal(window.closesAt, '2026-11-09T23:10:00.000Z');
+  }
+});
+
+test('expected vocabulary is deterministic, normalized and excludes FREE', () => {
+  const { expectedWords } = require('./bingo');
+  const words = expectedWords({ title: 'Kubernetes Kubernetes Security', track: 'Security' });
+  assert.equal(words.filter(word => word.key === 'kubernetes').length, 1);
+  assert.ok(words.some(word => word.key === 'supply chain'));
+  assert.ok(words.every(word => word.key !== 'free'));
+  assert.deepEqual(words, expectedWords({ title: 'Kubernetes Kubernetes Security', track: 'Security' }));
+});
+
 test('every track in the schedule migration has a buzzword pool', () => {
   const sql = fs.readFileSync(path.join(__dirname, 'migrations', '002_schedule.sql'), 'utf8');
   const tracksBlock = sql.split('-- Tracks')[1].split('-- Locations')[0];

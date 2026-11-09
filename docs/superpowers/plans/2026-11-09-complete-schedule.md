@@ -1,6 +1,6 @@
 # Complete Schedule Implementation Plan
 
-> **For agentic workers:** Use superpowers:executing-plans for inline implementation. User approved implementation on November 9; leave the result local for their verification before PR work.
+> **For agentic workers:** Use superpowers:executing-plans for inline implementation. User approved implementation and local preview on November 9, then requested integrating main and opening the PR.
 
 **Goal:** Import actual Tuesday–Thursday events, provide verified destinations, and make days horizontally scrollable.
 **Architecture:** Additive SQL snapshot with migration-owned rollback bookkeeping; existing Node/PostgreSQL server and native browser scrolling. Preserve existing session IDs, room overrides, and user activity.
@@ -12,7 +12,7 @@
 - Only actual scheduled programming; hide logistical/open-hours records without deleting user data.
 - America/Denver local times, including Wednesday midnight end.
 - Use hall-level locations for posters/demos without exact booth positions (user approved).
-- No new runtime dependencies; no push, deployment, or PR readiness changes before local user review.
+- No new runtime dependencies for this feature. Local user review is complete; pushing the feature branch and preparing the PR are authorized. Deployment remains outside this request.
 
 ## Review Focus
 
@@ -54,11 +54,13 @@
 
 ## Execution record
 
-- Approved by user; native implementation chosen as a routine execution detail. Existing feature branch reused. Source audit and proposal are already remote; implementation will remain local.
+- Approved by user; native implementation chosen as a routine execution detail. Existing feature branch and draft PR #13 reused.
 - Task 1 complete: SQL snapshot has 494 eligible Tuesday–Thursday source entries; 52 match existing entries and 442 are added. Counts: Tuesday 185, Wednesday 195, Thursday 114. Up/down/reapply tests pass, including original IDs, saved registration, explicit empty room overrides, retained Bingo and saved imports, and next-day midnight UTC.
 - Ruling: exclude logistics by specific titles, not the old `format` field. Seed session 62 is an actual talk incorrectly marked Break; it must remain visible. The source category exclusion remains in effect for new entries.
 - Task 2 complete: verified Park City polygon, North Grand Ballroom Foyer and Upper Mezzanine area pins, Regency B association, Hyatt lobby building pin, and Edison House venue pin. Broad poster/demo locations highlight all eight published expo halls. Visually checked loaded floor-plan overlays and public-area pins against official PDFs.
 - Task 3 complete: browser checks passed at 320px, 390px touch, and 1440px. Arrow scrolling, edge states, Thursday (114) / Wednesday (195) filtering, restored offscreen selection, keyboard navigation, search, saved sessions, reduced motion, and resizing verified. Native touch scrolled 112px without changing selected day; document width remained 390px.
 - Final review: independent reviewer found no actionable issues, independently matched all 494 source IDs/times, and verified configured-prize preservation plus empty imported room overrides across rollback/reapply. A subsequent browser check exposed the lobby's generic Off-site wording; changed it to Meeting point and reran the browser check successfully.
 - Final validation: `SCHEDULE_TEST_DATABASE_URL=postgresql://127.0.0.1:55447/postgres node --test` in `app/` passed 30/30 with no skipped tests. `git diff --check` passed. PostgreSQL test database and preview server were disposable; the user's database was not modified.
-- Local verification: restart the app normally with its existing `DATABASE_URL`; startup applies `009_complete_schedule.sql` once. No dependency installation is needed. All implementation changes remain uncommitted and unpushed on `feat/complete-schedule-days`; existing draft PR #13 remains the earlier proposal only.
+- Local verification: restart the app normally with its existing `DATABASE_URL`; startup applies `009_complete_schedule.sql` once. The user verified the preview and approved PR preparation.
+- Main integration: merged `b2e0324`, retaining Elasticsearch suggestions/search and Bingo results. Both database integration suites pass: 44 tests, zero failures or skips. The two `009_` migrations coexist because the runner tracks full filenames; schedule tests apply the new Bingo index before the schedule import.
+- Deployment follow-up: when Elasticsearch is configured, rerun the existing `node ingest-schedule.js` after the database migration to add imported sessions and remove hidden logistics from the search index.

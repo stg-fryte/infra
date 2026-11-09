@@ -15,6 +15,10 @@ spec:
     metadata:
       labels:
         app: app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "9464"
     spec:
       containers:
         - name: app
@@ -22,6 +26,8 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+            - name: metrics
+              containerPort: 9464
           env:
             - name: TEAM_NAME
               value: "stg-fryte"
@@ -30,6 +36,36 @@ spec:
                 secretKeyRef:
                   name: db-app
                   key: uri
+            # Elasticsearch (Elastic Cloud Serverless). Optional: when the
+            # secret is absent the app falls back to client-side search.
+            - name: ES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: es-credentials
+                  key: url
+                  optional: true
+            - name: ES_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: es-credentials
+                  key: api_key
+                  optional: true
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: dash0-telemetry
+                  key: endpoint
+                  optional: true
+            - name: OTEL_EXPORTER_OTLP_HEADERS
+              valueFrom:
+                secretKeyRef:
+                  name: dash0-telemetry
+                  key: headers
+                  optional: true
           resources:
             requests:
               cpu: 100m

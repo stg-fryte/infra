@@ -7,7 +7,13 @@ const path = require('node:path');
 const { randomBytes, scryptSync, createHash, timingSafeEqual } = require('node:crypto');
 const { Pool } = require('pg');
 const { MIGRATIONS_DIR, MIGRATION_FILE, MIGRATION_LOCK_KEY } = require('./migrationConfig');
-const { GRID_SIZE, FREE_INDEX, buildCard, isMarkableIndex, winningLines } = require('./bingo');
+const { FREE_INDEX, winningLines } = require('./bingo');
+const { bingoWindow } = require('./bingo');
+const bingoStore = require('./bingo-store');
+const resultsUi = require('./results-ui');
+const { createObservability, instrumentPool } = require('./observability');
+const { SCHEDULE_QUERY } = require('./scheduleQuery');
+const { searchSessions, suggestTitles, SearchUnavailable } = require('./sessionsSearch');
 
 const port = Number(process.env.PORT || 8080);
 const team = process.env.TEAM_NAME || 'your-team';
@@ -18,6 +24,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
+const telemetry = createObservability();
+instrumentPool(pool, telemetry);
 
 const SESSION_COOKIE = 'sid';
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -28,38 +36,10 @@ const PASSWORD_MAX = 128;
 const BOOTSTRAP_CSS_URL = '/static/bootstrap.min.css';
 const bootstrapCss = fs.readFileSync(require.resolve('bootstrap/dist/css/bootstrap.min.css'));
 
-const SCHEDULE_QUERY = `
-  SELECT s.id,
-         d.label AS day,
-         to_char(d.event_date, 'YYYY-MM-DD') AS date,
-         to_char(s.start_time, 'HH24:MI') AS start_time,
-         to_char(s.end_time, 'HH24:MI') AS end_time,
-         (d.event_date + s.end_time) AT TIME ZONE 'America/Denver' AS ends_at,
-         s.title,
-         t.name AS track,
-         s.level,
-         s.format,
-         l.venue,
-         l.level AS floor,
-         l.room,
-         l.id AS location_id,
-         ARRAY(SELECT room_id FROM session_rooms WHERE session_id = s.id ORDER BY room_id) AS room_ids,
-         s.notes,
-         COALESCE(string_agg(sp.name, ', ' ORDER BY sp.name), '') AS speakers
-  FROM sessions s
-  JOIN days d ON d.id = s.day_id
-  JOIN locations l ON l.id = s.location_id
-  LEFT JOIN tracks t ON t.id = s.track_id
-  LEFT JOIN session_speakers ss ON ss.session_id = s.id
-  LEFT JOIN speakers sp ON sp.id = ss.speaker_id
-  WHERE NOT s.hidden
-  GROUP BY s.id, d.id, t.id, l.id
-  ORDER BY d.event_date, s.start_time, s.end_time, s.id`;
-
-async function loadSchedule() {
+async function loadSchedule(history = false) {
   const { rows } = await pool.query(SCHEDULE_QUERY);
   const now = Date.now();
-  return rows.filter(event => isUpcoming(event, now));
+  return rows.filter(event => history ? !isUpcoming(event, now) : isUpcoming(event, now));
 }
 
 const locationLabel = (s) => [s.venue, s.floor, s.room].filter(Boolean).join(' · ');
@@ -258,76 +238,47 @@ async function handleLogout(req, res) {
   send(res, 303, 'text/plain', '', { location: '/login', 'set-cookie': sessionCookie('', 0) });
 }
 
-const BINGO_PATH = /^\/bingo\/(\d{1,9})(\/mark)?$/;
-
-async function loadBingoSession(sessionId) {
-  const { rows } = await pool.query(
-    `SELECT s.id, s.title, t.name AS track, p.prize, p.winner_user_id, w.username AS winner
-     FROM sessions s
-     LEFT JOIN tracks t ON t.id = s.track_id
-     LEFT JOIN session_prizes p ON p.session_id = s.id
-     LEFT JOIN users w ON w.id = p.winner_user_id
-     WHERE s.id = $1 AND NOT s.hidden`,
-    [sessionId],
-  );
-  return rows[0] || null;
-}
-
-async function loadOrCreateCard(userId, session) {
-  await pool.query(
-    `INSERT INTO bingo_cards (user_id, session_id, cells) VALUES ($1, $2, $3)
-     ON CONFLICT (user_id, session_id) DO NOTHING`,
-    [userId, session.id, JSON.stringify(buildCard(session))],
-  );
-  const { rows } = await pool.query(
-    'SELECT cells, marked, bingo_at FROM bingo_cards WHERE user_id = $1 AND session_id = $2',
-    [userId, session.id],
-  );
-  return rows[0];
-}
+const BINGO_PATH = /^\/bingo\/(\d{1,9})(\/(?:mark|start))?$/;
 
 function bingoHtml(user, session, card) {
+  const window = bingoWindow(session.ends_at);
+  const eligible = card && new Date(card.created_at) < new Date(session.ends_at);
   return ui.bingoPage(user, session, card, {
     team, version, freeIndex: FREE_INDEX, winningLines: winningLines(card.marked),
+    editable: window.canEdit && eligible, window,
   });
 }
 
-async function handleBingoMark(req, res, user, session) {
-  const index = Number((await readForm(req)).get('cell'));
-  if (isMarkableIndex(index)) {
-    await loadOrCreateCard(user.id, session);
-    const { rows } = await pool.query(
-      `UPDATE bingo_cards
-       SET marked = CASE WHEN $3 = ANY(marked) THEN array_remove(marked, $3) ELSE array_append(marked, $3) END
-       WHERE user_id = $1 AND session_id = $2
-       RETURNING marked`,
-      [user.id, session.id, index],
-    );
-    if (winningLines(rows[0].marked).length > 0) {
-      await pool.query(
-        'UPDATE bingo_cards SET bingo_at = now() WHERE user_id = $1 AND session_id = $2 AND bingo_at IS NULL',
-        [user.id, session.id],
-      );
-      await pool.query(
-        `UPDATE session_prizes SET winner_user_id = $1, won_at = now()
-         WHERE session_id = $2 AND winner_user_id IS NULL`,
-        [user.id, session.id],
-      );
-    }
-  }
-  send(res, 303, 'text/plain', '', { location: `/bingo/${session.id}` });
-}
-
 async function handleBingo(req, res, user, match) {
-  const session = await loadBingoSession(Number(match[1]));
+  const session = await bingoStore.loadSession(pool, Number(match[1]));
   if (!session) return send(res, 404, 'text/plain', 'not found\n');
   if (match[2]) {
     if (req.method !== 'POST') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'POST' });
-    return handleBingoMark(req, res, user, session);
+    const form = await readForm(req);
+    let result;
+    if (match[2] === '/start') {
+      if (form.get('notice') !== 'acknowledged') return send(res, 400, 'text/plain', 'Read the bingo privacy notice before starting.\n');
+      result = await bingoStore.startCard(pool, user.id, session.id);
+    } else {
+      const [cell, desired] = (form.get('cell') || '').split(':');
+      const checked = form.get('checked') ?? desired;
+      if (!/^\d{1,2}$/.test(cell) || !['true', 'false'].includes(checked)) {
+        return send(res, 400, 'text/plain', 'Provide a valid cell and checked state. Refresh an older card page.\n');
+      }
+      result = await bingoStore.markCard(pool, user.id, session.id, Number(cell), checked === 'true');
+    }
+    if (result.status !== 'ok') {
+      if (result.status === 'invalid') return send(res, 400, 'text/plain', 'Invalid square.\n');
+      const message = result.status === 'missing' ? 'Start a card before the event ends to play.' :
+        match[2] === '/start' ? 'This event has ended. New cards are closed.' : 'Your card is read-only. The correction window has closed.';
+      return send(res, 409, 'text/html; charset=utf-8', resultsUi.messagePage(message, session, { team, version }));
+    }
+    return send(res, 303, 'text/plain', '', { location: `/bingo/${session.id}` });
   }
   if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
-  const card = await loadOrCreateCard(user.id, session);
-  return send(res, 200, 'text/html; charset=utf-8', bingoHtml(user, session, card));
+  const card = await bingoStore.loadCard(pool, user.id, session.id);
+  return send(res, 200, 'text/html; charset=utf-8', card ? bingoHtml(user, session, card) :
+    resultsUi.startPage(session, { team, version }));
 }
 
 const SAVED_PATH = /^\/api\/saved(?:\/(\d{1,9}))?$/;
@@ -377,7 +328,11 @@ async function handleSaved(req, res, user, match) {
 }
 
 async function route(req, res, url) {
+  res.setHeader('Cache-Control', 'no-store');
   if (url.pathname === '/healthz') return send(res, 200, 'text/plain', 'ok\n');
+  if (url.pathname === '/privacy' && req.method === 'GET') {
+    return send(res, 200, 'text/html; charset=utf-8', resultsUi.privacyPage({ team, version }));
+  }
   if (url.pathname === BOOTSTRAP_CSS_URL && req.method === 'GET') {
     return send(res, 200, 'text/css; charset=utf-8', bootstrapCss, { 'cache-control': 'public, max-age=86400' });
   }
@@ -422,6 +377,20 @@ async function route(req, res, url) {
   const bingoMatch = BINGO_PATH.exec(url.pathname);
   if (bingoMatch) return handleBingo(req, res, user, bingoMatch);
 
+  if (url.pathname === '/history') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
+    return send(res, 200, 'text/html; charset=utf-8', resultsUi.historyPage(await loadSchedule(true), { team, version }));
+  }
+  const resultMatch = /^\/(api\/sessions\/(\d{1,9})\/buzzwords|sessions\/(\d{1,9})\/results)$/.exec(url.pathname);
+  if (resultMatch) {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
+    const result = await bingoStore.loadResults(pool, Number(resultMatch[2] || resultMatch[3]));
+    if (!result) return send(res, 404, 'text/plain', 'not found\n');
+    if (resultMatch[2]) return send(res, 200, 'application/json', JSON.stringify(result));
+    const session = await bingoStore.loadSession(pool, result.id);
+    return send(res, 200, 'text/html; charset=utf-8', resultsUi.resultsPage(result, { team, version, session }));
+  }
+
   if (['/static/venue-map.js', '/static/floor-plans.js'].includes(url.pathname)) {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
     const source = await readFile(path.join(__dirname, path.basename(url.pathname)), 'utf8');
@@ -434,6 +403,31 @@ async function route(req, res, url) {
   if (url.pathname === '/api/sessions') {
     const sessions = await loadSchedule();
     return send(res, 200, 'application/json', JSON.stringify({ version, user: user.username, sessions }));
+  }
+  if (url.pathname === '/api/search' || url.pathname === '/api/suggest') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
+    const params = url.searchParams;
+    try {
+      if (url.pathname === '/api/suggest') {
+        const prefix = (params.get('q') || '').trim();
+        if (!prefix) return send(res, 200, 'application/json', JSON.stringify({ suggestions: [] }));
+        const suggestions = await suggestTitles(prefix);
+        return send(res, 200, 'application/json', JSON.stringify({ suggestions }));
+      }
+      const result = await searchSessions({
+        q: (params.get('q') || '').trim(),
+        day: params.get('day'),
+        track: params.get('track'),
+        level: params.get('level'),
+        size: Math.min(Number(params.get('size')) || 50, 200),
+      });
+      return send(res, 200, 'application/json', JSON.stringify(result));
+    } catch (error) {
+      if (error instanceof SearchUnavailable) {
+        return send(res, 503, 'application/json', JSON.stringify({ error: 'search unavailable' }));
+      }
+      throw error;
+    }
   }
   if (url.pathname === '/map') {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
@@ -479,6 +473,8 @@ async function route(req, res, url) {
 }
 
 const server = http.createServer((req, res) => {
+  const started = performance.now();
+  res.once('finish', () => telemetry.recordRequest(req.method, req.url, res.statusCode, (performance.now()-started)/1000));
   let url;
   try {
     url = new URL(req.url, 'http://localhost');
@@ -492,14 +488,46 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, () => console.log(`listening on :${port}, version ${version}`));
+// Separate pod port: the public Service only forwards the application port.
+const metricsServer = http.createServer((req, res) => {
+  if (req.url !== '/metrics') return send(res, 404, 'text/plain', 'not found\n');
+  if (!schemaReady) return send(res, 503, 'text/plain', 'schema not ready\n');
+  telemetry.prometheus.getMetricsRequestHandler(req, res);
+});
+metricsServer.on('error', () => console.error('metrics listener unavailable'));
+metricsServer.listen(Number(process.env.METRICS_PORT || 9464));
+let refreshTimer;
+let refreshing = false;
+async function refreshAggregates() {
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    const boundedDb = { connect: async () => {
+      const client = await pool.connect();
+      return { query: (text, values) => client.query({ text, values, query_timeout: 4000 }), release: () => client.release() };
+    } };
+    telemetry.updateResults(await bingoStore.loadAllResults(boundedDb));
+  } catch {
+    console.error('bingo aggregate refresh failed');
+  } finally { refreshing = false; }
+}
 migrate()
   .then(() => {
     schemaReady = true;
+    refreshAggregates();
+    refreshTimer = setInterval(refreshAggregates, 30000);
+    refreshTimer.unref();
   })
   .catch((error) => {
     console.error(`migration failed: ${error.message}`);
     process.exit(1);
   });
 
-// Exit cleanly when Kubernetes stops the pod, so rollouts don't drop requests.
-process.on('SIGTERM', () => server.close(() => pool.end().then(() => process.exit(0))));
+process.once('SIGTERM', () => {
+  clearInterval(refreshTimer);
+  metricsServer.close();
+  server.close(() => {
+    Promise.allSettled([telemetry.provider.shutdown(),pool.end()]).then(() => process.exit(0));
+  });
+  setTimeout(() => process.exit(0), 10000).unref();
+});

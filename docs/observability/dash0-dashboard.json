@@ -1,0 +1,319 @@
+{
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "kube-companion-bingo"
+  },
+  "spec": {
+    "display": {
+      "name": "Kube Companion · Bingo & service health",
+      "description": "Account reports, not speech counts. Max across app replicas prevents double counting. Select a session ID; .* shows all sessions. Results close 10 minutes after scheduled end. The app has exact expected-word tables and word clouds."
+    },
+    "duration": "1h",
+    "refreshInterval": "30s",
+    "variables": [
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "name": "session",
+          "display": {
+            "name": "Session ID (or .* for all)"
+          },
+          "value": ".*"
+        }
+      }
+    ],
+    "panels": {
+      "participants": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Participating accounts"
+          },
+          "plugin": {
+            "kind": "TimeSeriesTable",
+            "spec": {
+              "calculation": "instant"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max by (session_id) ({otel_metric_name=\"bingo_participants\",session_id=~\"$session\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "final": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Final results (1 = frozen)"
+          },
+          "plugin": {
+            "kind": "TimeSeriesTable",
+            "spec": {
+              "calculation": "instant"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "min by (session_id) ({otel_metric_name=\"bingo_results_final\",session_id=~\"$session\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "reported": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Reported by word"
+          },
+          "plugin": {
+            "kind": "TimeSeriesTable",
+            "spec": {
+              "calculation": "instant"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max by (session_id, word) ({otel_metric_name=\"bingo_word_reported\",session_id=~\"$session\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "shown": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Cards showing each word"
+          },
+          "plugin": {
+            "kind": "TimeSeriesTable",
+            "spec": {
+              "calculation": "instant"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max by (session_id, word) ({otel_metric_name=\"bingo_word_shown\",session_id=~\"$session\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "rate": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Report rate (reports / cards shown)"
+          },
+          "plugin": {
+            "kind": "TimeSeriesTable",
+            "spec": {
+              "calculation": "instant"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max by (session_id, word) ({otel_metric_name=\"bingo_word_reported\",session_id=~\"$session\"}) / max by (session_id, word) ({otel_metric_name=\"bingo_word_shown\",session_id=~\"$session\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "fresh": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Aggregate freshness (1 = fresh)"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "min({otel_metric_name=\"bingo_aggregate_fresh\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "requests": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "HTTP requests / second"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by (route) (rate({otel_metric_name=\"http_server_requests\"}[5m]))"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "errors": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "HTTP errors / second"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by (status) (rate({otel_metric_name=\"http_server_requests\",status=~\"5..\"}[5m]))"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "layouts": [
+      {
+        "kind": "Grid",
+        "spec": {
+          "items": [
+            {
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/participants"
+              }
+            },
+            {
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/final"
+              }
+            },
+            {
+              "x": 0,
+              "y": 8,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/reported"
+              }
+            },
+            {
+              "x": 12,
+              "y": 8,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/shown"
+              }
+            },
+            {
+              "x": 0,
+              "y": 16,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/rate"
+              }
+            },
+            {
+              "x": 12,
+              "y": 16,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/fresh"
+              }
+            },
+            {
+              "x": 0,
+              "y": 24,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/requests"
+              }
+            },
+            {
+              "x": 12,
+              "y": 24,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/errors"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
