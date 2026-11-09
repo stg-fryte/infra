@@ -1,0 +1,91 @@
+Kube Companion Hackathon Project Write Up
+
+Project overview
+
+We built Kube Companion during the Cloud Native Hackathon to help attendees get more out of KubeCon + CloudNativeCon North America 2026. The app brings session discovery, a personal schedule, venue maps, and an interactive conference game into one place.
+
+At a large conference, finding an interesting talk is only the first step. Attendees also need to keep track of their choices, locate the right room, and stay engaged throughout the day. Our goal was to connect those activities through a consistent, personalized interface that works on desktop and mobile.
+
+The central idea is simple: find a session, save it, find its room, and join Buzzword Bingo while listening. Afterward, attendees can explore the session’s community-reported buzzword results.
+
+How the app works
+
+Discover sessions and build a schedule
+
+After registering or signing in, attendees can browse sessions by day and track, search the schedule, and review session times and locations. Each session card includes an “Add to my schedule” action. Saved sessions are stored against the user’s account in PostgreSQL, and the My Schedule link provides a consistent way to return to them throughout the app.
+
+Elasticsearch supports searches across session titles, speakers, rooms, venues, and notes. Titles and speaker names receive extra weight, and fuzzy matching helps accommodate typing mistakes. When Elasticsearch is unavailable, the interface can fall back to a simpler local text filter.
+
+Find the right room
+
+The venue map connects conference events to their mapped rooms and floor plans. Attendees can select an event, view its location, and explore floors at the Salt Palace or Hyatt Regency. A separate Room Mapping page makes the relationship between schedule locations and mapped rooms easier to inspect.
+
+The app also handles locations without a mapped room by showing the available event information. This keeps the schedule useful while room coverage is expanded. The floor plans support visual orientation rather than turn-by-turn indoor navigation.
+
+Play Buzzword Bingo
+
+Eligible sessions include a prominent “Play Buzzword Bingo” button. During the session, a participant can start a personalized 5-by-5 card containing 24 terms and a free center square. The app builds the vocabulary from the session title, its conference track, and a shared collection of cloud-native terms.
+
+Participants mark terms as they hear them. Completing a row, column, or diagonal produces a bingo. Cards and marked squares are saved in the database, so refreshing the page does not lose progress.
+
+New cards can be created while the session is running. Existing players have a ten-minute correction window after it ends, after which their cards become read-only. The server enforces these time limits and checks winning patterns.
+
+Explore past events and results
+
+The Past Events page provides access to completed sessions and their buzzword results. Results show which terms were available, how often they appeared on participants’ cards, and how often participants marked them.
+
+Because everyone receives a different card, a term’s reporting rate uses the number of cards that actually showed that term as its denominator. This makes the results more meaningful than comparing raw counts alone. These are participant reports of what they heard, rather than an automatically generated transcript. Demonstration results are explicitly labeled when demo mode is enabled.
+
+Personalize the experience
+
+The profile page lets attendees upload a photo and add details such as their display name, pronouns, company, role, interests, and biography. It also supports GitHub, LinkedIn, Mastodon, Bluesky, and personal website links.
+
+Appearance settings include light, dark, and system modes, custom accent and background colors, and a reduced-motion preference. Attendees can also choose a comfortable or compact default schedule layout. These settings are saved with the account and applied across the app.
+
+A Sponsors page introduces Sonar, Dash0, Radar, and Elasticsearch with company logos, descriptions, and website links.
+
+Technology and architecture
+
+Kube Companion uses a Node.js HTTP server with server-rendered HTML, JavaScript, and CSS. This kept the application straightforward to develop during the hackathon while allowing interactive search, maps, profile previews, and gameplay in the browser.
+
+PostgreSQL is the primary data store. It holds conference sessions and their related days, tracks, speakers, locations, and rooms, along with accounts, saved schedules, profile settings, bingo cards, and game state. Schedule data is imported from conference data files, and database migrations manage schema changes.
+
+Elasticsearch provides a separate search index for session discovery. PostgreSQL remains the source of truth for the schedule and user activity.
+
+The application includes OpenTelemetry metrics for HTTP requests, response times, database query durations, bingo participation, and aggregated word reports. Metrics are exposed for Prometheus scraping, and an optional OTLP exporter is configured to send metrics to Dash0 when credentials are supplied.
+
+The deployment setup packages the app as a container and runs it on Kubernetes. GitHub Actions builds application images, and Argo CD manages deployment through GitOps. Health and readiness endpoints let Kubernetes determine whether the application is running and ready to receive traffic. The project uses the Radar hackathon starter and its Kubernetes operations workflow.
+
+These components serve distinct purposes: PostgreSQL stores application data, Elasticsearch supports discovery, and the monitoring and deployment tools support operating the app.
+
+Engineering decisions
+
+Keep user state reliable
+
+We stored saved schedules, profiles, and bingo progress in PostgreSQL so important user actions survive refreshes and application restarts. Database transactions and locks coordinate concurrent bingo updates, including competing attempts to claim a session’s first win. Timing checks use the database clock so a delayed request cannot extend the correction window.
+
+Make the interface consistent
+
+We developed a shared visual style and navigation across the schedule, bingo, maps, room mappings, results, profiles, and sponsors. The schedule’s two main actions are clearly grouped: saving a session and joining its game. Theme settings and reduced-motion support allow attendees to adjust the experience to their preferences.
+
+Separate private activity from shared results
+
+Passwords are stored as salted scrypt hashes, and authenticated sessions use cookies. Individual bingo cards belong to their account holders. Shared buzzword results are aggregated in PostgreSQL so the results data does not expose individual cards or account identifiers. A dedicated Bingo Privacy page explains how gameplay data contributes to those results.
+
+Connect a practical tool with a social activity
+
+The hackathon result is a working conference companion with a connected path from planning to participation. Buzzword Bingo gives attendees a playful reason to listen closely, while the schedule and maps address the practical needs that bring them back to the app.
+
+Future development
+
+Our next priorities would be broader room coverage, schedule conflict detection, session reminders, calendar export, and offline access to saved sessions and venue information.
+
+We would also expand accessibility checks, user testing, and operational testing under realistic conference traffic. Further work could include organizer tools for schedule updates, clearer account and data-retention controls, and richer session summaries based on aggregated participation.
+
+The foundation supports a conference experience that can continue growing around attendee needs: easier planning, clearer wayfinding, and more engaging sessions.
+
+Developpers that built app
+Dave Tyler davetyler547@gmail.com
+Devin W: devin.winters77@gmail.com
+Tom: tom@tomwheeler.dev
+Charlie: charlie@adair.sh 
