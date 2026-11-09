@@ -1,5 +1,5 @@
-# On every app push to main: build the image and open a deployment PR.
-# Argo CD deploys the image after that manifest-only PR is merged.
+# On every push to main: build the image, push it to GHCR, and point
+# deploy/kustomization.yaml at it. Argo CD sees that commit and deploys it.
 name: build-and-deploy
 
 on:
@@ -13,7 +13,6 @@ on:
 permissions:
   contents: write
   packages: write
-  pull-requests: write
 
 concurrency:
   group: build-and-deploy
@@ -49,25 +48,24 @@ jobs:
             ${{ steps.meta.outputs.image }}:latest
           labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
-      - name: Open deployment pull request
+      - name: Point the manifests at the new image
         env:
           IMAGE: ${{ steps.meta.outputs.image }}
           TAG: ${{ steps.meta.outputs.tag }}
-          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Base the image-only change on current main. Each attempt gets its own
-          # branch, so retries never force-push over a PR somebody is reviewing.
-          git fetch -q origin main
-          branch="deploy/image-${TAG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          git checkout -b "$branch" FETCH_HEAD
-          yq -i '(.images[] | select(.name == "app")) |= (.newName = strenv(IMAGE) | .newTag = strenv(TAG))' deploy/kustomization.yaml
-          if git diff --quiet -- deploy/kustomization.yaml; then exit 0; fi
-          git add deploy/kustomization.yaml
-          git commit -m "deploy: ${TAG}"
-          git push -u origin "$branch"
-          printf 'Deploy image `%s:%s` built from commit `%s`.\n\nBuild: %s/%s/actions/runs/%s\n\nThis PR changes only the image reference. Merging it lets Argo CD roll out the build; the manifest-only change does not trigger another image build.\n' \
-            "$IMAGE" "$TAG" "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/deployment-pr.md"
-          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
-            --title "deploy: ${TAG}" --body-file "$RUNNER_TEMP/deployment-pr.md"
+          # Set the image on top of the latest main, not on the commit this run
+          # built. A push that landed during the build (yours, or the previous
+          # run's deploy commit) then can't conflict; retry if one lands mid-push.
+          for attempt in 1 2 3 4 5; do
+            git fetch -q origin main
+            git reset -q --hard FETCH_HEAD
+            yq -i '(.images[] | select(.name == "app")) |= (.newName = strenv(IMAGE) | .newTag = strenv(TAG))' deploy/kustomization.yaml
+            if git diff --quiet; then exit 0; fi
+            git commit -qam "deploy: ${TAG} [skip ci]"
+            if git push -q origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          echo "Couldn't push the deploy commit after 5 tries." >&2
+          exit 1
