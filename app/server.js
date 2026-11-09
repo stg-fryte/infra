@@ -1,4 +1,6 @@
+const fs = require('node:fs');
 const http = require('node:http');
+const path = require('node:path');
 const { randomBytes, scryptSync, createHash, timingSafeEqual } = require('node:crypto');
 const { Pool } = require('pg');
 
@@ -18,6 +20,9 @@ const MAX_BODY_BYTES = 4096;
 const USERNAME_PATTERN = /^[a-z0-9_.-]{3,32}$/;
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 128;
+const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
+const MIGRATION_FILE = /^\d+_[a-z0-9_]+\.sql$/;
+const MIGRATION_LOCK_KEY = 727001;
 
 const sessions = [
   { id: 1, time: '10:00', room: 'Main', title: 'Kickoff and sponsor talks' },
@@ -30,28 +35,47 @@ let schemaReady = false;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function migrate() {
+async function connectWithRetry() {
   for (let attempt = 1; ; attempt++) {
     try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS users (
-          id BIGSERIAL PRIMARY KEY,
-          username TEXT NOT NULL UNIQUE,
-          password_salt BYTEA NOT NULL,
-          password_hash BYTEA NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
-        CREATE TABLE IF NOT EXISTS user_sessions (
-          token_hash BYTEA PRIMARY KEY,
-          user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          expires_at TIMESTAMPTZ NOT NULL
-        );
-      `);
-      return;
+      return await pool.connect();
     } catch (error) {
       if (attempt >= 30) throw error;
       console.error(`database not ready (attempt ${attempt}): ${error.message}`);
       await sleep(2000);
+    }
+  }
+}
+
+async function migrate() {
+  const files = fs.readdirSync(MIGRATIONS_DIR).filter((name) => MIGRATION_FILE.test(name)).sort();
+  const client = await connectWithRetry();
+  try {
+    await client.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_KEY]);
+    await client.query(
+      'CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())',
+    );
+    const { rows } = await client.query('SELECT name FROM schema_migrations');
+    const applied = new Set(rows.map((row) => row.name));
+    for (const name of files) {
+      if (applied.has(name)) continue;
+      const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, name), 'utf8');
+      try {
+        await client.query('BEGIN');
+        await client.query(sql);
+        await client.query('INSERT INTO schema_migrations (name) VALUES ($1)', [name]);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw new Error(`migration ${name} failed: ${error.message}`);
+      }
+      console.log(`applied migration ${name}`);
+    }
+  } finally {
+    try {
+      await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]);
+    } finally {
+      client.release();
     }
   }
 }
