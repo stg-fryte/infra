@@ -1,0 +1,141 @@
+﻿Day,Start,End,Title,Speaker(s),Track / Category,Level,Format,Location,Notes
+Sun Nov 8,8:00 AM,5:00 PM,Registration + Badge Pick-Up,,,,Registration,Salt Palace | 200 South Entrance (South),
+Sun Nov 8,8:00 AM,6:00 PM,Coat + Bag Check,,,,Registration,Salt Palace | Level 2 | East Registration,
+Sun Nov 8,9:00 AM,5:30 PM,CNCF Maintainer Summit,,,,Co-located (separate registration),Salt Palace | Level 2 | 250 A-C,SOLD OUT
+Sun Nov 8,9:00 AM,6:00 PM,Agent Rush Hackathon (hosted by Vultr),,,,Sponsor-hosted Co-located,Off-site,SOLD OUT; separate registration
+Mon Nov 9,7:00 AM,5:00 PM,Registration + Badge Pick-Up,,,,Registration,Salt Palace | 200 South Entrance (South),
+Mon Nov 9,7:00 AM,7:00 PM,Coat + Bag Check,,,,Registration,Salt Palace | Level 2 | East Registration,
+Mon Nov 9,8:00 AM,6:00 PM,Microsoft Azure Day with Kubernetes,,,,Sponsor-hosted Co-located,Off-site,Separate registration (free)
+Mon Nov 9,8:00 AM,3:00 PM,OpenShift Commons Gathering (hosted by Red Hat),,,,Sponsor-hosted Co-located,"Hilton Salt Lake City Center, 255 S West Temple",Separate registration (free)
+Mon Nov 9,8:30 AM,12:30 PM,"Building, Scaling + Running Secure Agents on Kubernetes (AWS)",,,,Sponsor-hosted Co-located,Kimpton Monaco SLC | Floor 2 | Paris Ballroom,KubeCon registration not required; laptop required
+Mon Nov 9,8:30 AM,5:00 PM,DSX OS AI Inference and Contributor Workshop (hosted by NVIDIA),,,,Sponsor-hosted Co-located,Off-site,SOLD OUT
+Mon Nov 9,9:00 AM,5:30 PM,Agentics Day: MCP + Agents,,,,CNCF-hosted Co-located,Salt Palace | Level 1 | Grand Ballroom ACE,All Access Pass required
+Mon Nov 9,9:00 AM,5:30 PM,Platform Engineering Day,,,,CNCF-hosted Co-located,Salt Palace | Level 1 | Grand Ballroom BDF,All Access Pass required
+Mon Nov 9,9:00 AM,12:25 PM,FluxCon,,,,CNCF-hosted Co-located,Salt Palace | Level 1 | Grand Ballroom H,All Access Pass required
+Mon Nov 9,9:00 AM,5:30 PM,ArgoCon,,,,CNCF-hosted Co-located,Salt Palace | Level 1 | 151,All Access Pass required
+Mon Nov 9,9:00 AM,5:30 PM,Open Source SecurityCon,,,,CNCF-hosted Co-located,Salt Palace | Level 2 | 255 BC,All Access Pass required
+Mon Nov 9,9:00 AM,5:30 PM,BackstageCon,,,,CNCF-hosted Co-located,Salt Palace | Level 2 | 255 EF,All Access Pass required
+Mon Nov 9,9:00 AM,5:30 PM,Observability Day,,,,CNCF-hosted Co-located,Salt Palace | Level 2 | 250 A-C,All Access Pass required
+Mon Nov 9,9:00 AM,5:30 PM,Cloud Native AI + Inference Day,,,,CNCF-hosted Co-located,Salt Palace | Level 2 | 254,All Access Pass required
+Mon Nov 9,9:00 AM,12:25 PM,CiliumCon,,,,CNCF-hosted Co-located,Salt Palace | Level 1 | Grand Ballroom J,All Access Pass required
+Mon Nov 9,9:30 AM,3:00 PM,Hands-On with Apple Open Source Tooling (hosted by Apple),,,,Sponsor-hosted Co-located,Off-site,SOLD OUT
+Mon Nov 9,10:30 AM,7:00 PM,KubeAuto Day North America with Kelsey Hightower (hosted by Cast AI),Kelsey Hightower (keynote),,,Sponsor-hosted Co-located,"Clark Planetarium, 110 S 400 W",Separate registration
+Mon Nov 9,12:00 PM,5:30 PM,Distributed SQL Summit (hosted by YugabyteDB),,,,Sponsor-hosted Co-located,"Gallivan Center, 50 E 200 S",Separate registration
+Mon Nov 9,12:00 PM,4:00 PM,Stateful Done Right (hosted by Cockroach Labs),"Felipe Gutierrez, Nathan Zamecnik",,,Sponsor-hosted Co-located,"Le Méridien Salt Lake City Downtown, 131 S 300 W",SOLD OUT
+Mon Nov 9,12:30 PM,4:30 PM,Accelerate Platform Engineering on Kubernetes (AWS),,,,Sponsor-hosted Co-located,Kimpton Monaco SLC | Floor 2 | Paris Ballroom,KubeCon registration not required; laptop required
+Mon Nov 9,12:30 PM,5:00 PM,VM on Kubernetes Day (hosted by Portworx by Everpure),,,,Sponsor-hosted Co-located,"Salt Lake Marriott Downtown at City Creek, 75 S W Temple",Separate registration
+Mon Nov 9,1:25 PM,5:30 PM,OpenTofu Day,,,,CNCF-hosted Co-located,Salt Palace | Level 1 | Grand Ballroom H,All Access Pass required
+Mon Nov 9,1:25 PM,5:30 PM,Kubernetes on Edge Day,,,,CNCF-hosted Co-located,Salt Palace | Level 2 | 255 A,All Access Pass required
+Mon Nov 9,2:00 PM,5:00 PM,Discovering and Securing AI Agents in Kubernetes (hosted by Tigera),Peter Kelly,,,Sponsor-hosted Co-located,Le Méridien SLC Downtown | Triumph Salon I,Separate registration
+Mon Nov 9,3:00 PM,4:00 PM,Peer Group Mentoring,,Experiences,Beginner,Experience,Hyatt Regency | Level 5 | Capitol Reef,
+Mon Nov 9,4:00 PM,5:30 PM,AgentCore Workshop with AWS & Sonrai Security,,,,Sponsor-hosted Co-located,"AC Hotel Salt Lake City Downtown, 225 W 200 S",Separate registration
+Mon Nov 9,6:30 PM,7:30 PM,Documentary Premiere: The Linkerd Story: The People Behind the Service Mesh,,Experiences,,Experience,Salt Palace | Level 1 | 151,
+Mon Nov 9,9:30 AM,9:35 AM,Project Lightning Talk Opening / Intro,Robert Sirchia,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,
+Mon Nov 9,9:37 AM,9:52 AM,Project Lightning Talk – Project Overview,"Jorge Castro, Katherine Druckman",Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,
+Mon Nov 9,9:54 AM,9:59 AM,Kubernetes under Fire: Igniting Performance and Burning Through Bottlenecks with Kube-Burner,Andrew Collins,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: kube-burner
+Mon Nov 9,10:01 AM,10:06 AM,OpenChoreo: Developer Platform for Both Humans and Agents,Sameera Jayasoma,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: OpenChoreo
+Mon Nov 9,10:08 AM,10:13 AM,Architecture Without Gatekeepers: Decoupling for Neutrality,Marcin Gwozdz,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: OpenEverest
+Mon Nov 9,10:15 AM,10:20 AM,Cloud Native MySQL,Matt Lord,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Vitess
+Mon Nov 9,10:22 AM,10:27 AM,Celebrate Flux's 10 Years!,Tamao Nakahara,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Flux
+Mon Nov 9,10:29 AM,10:34 AM,Container Builds at Scale with Buildpacks,Joe Kutner,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Buildpacks
+Mon Nov 9,10:36 AM,10:41 AM,Simplifying Distributed LLM Serving: What's New in KServe,Gavrish Prabhu,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: KServe
+Mon Nov 9,10:43 AM,10:48 AM,Extending the Immutable OS: Adding Tools to Flatcar with Systemd-Sysext,Jan Bronicki,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Flatcar Container Linux
+Mon Nov 9,10:48 AM,11:03 AM,☕ Coffee Break,,Project Lightning Talks,,Break,Hyatt Regency | Level 4 | Regency Ballroom B-D,
+Mon Nov 9,11:03 AM,11:08 AM,Monitoring Power at Planet Scale with Kepler,Niki Manoledaki,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Kepler
+Mon Nov 9,11:10 AM,11:15 AM,Maintaining at Agent Speed with Hive Commons,Andy Anderson,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Hive Commons
+Mon Nov 9,11:17 AM,11:22 AM,From Kernel to Kubectl in 30 Seconds: eBPF Observability with Inspektor Gadget,Qasim Sarfraz,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Inspektor Gadget
+Mon Nov 9,11:24 AM,11:29 AM,Fluent Bit: The Evolution of High-Performance Telemetry Pipelines,Eduardo Silva,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Fluentd
+Mon Nov 9,11:31 AM,11:36 AM,LitmusChaos 2026: What's New & What's Next,Pritesh Kiri,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Litmus
+Mon Nov 9,11:38 AM,11:43 AM,Supply Chain Security at Home: From Source to Service Without the Hassle,Andrew Thorp,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,
+Mon Nov 9,11:45 AM,11:50 AM,Secure Your Agents in 5 Minutes: Durable Execution with Cadence,Diana Zawadzki,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Cadence Workflow
+Mon Nov 9,11:52 AM,11:57 AM,Scaling Across the Horizon: Dynamic Hardware Composability for Distributed LLM Inference via CoHDI,Hidetsugu Sugiyama,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: CoHDI
+Mon Nov 9,11:59 AM,12:04 PM,k8gb Is Growing up: Incubating Global Load Balancing for Kubernetes,Fabrizio Sgura,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: k8gb
+Mon Nov 9,12:06 PM,12:11 PM,Hub → Managed Cluster: How Long Did the Workload Take? Did It Arrive?,Suvaansh Kumar,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Open Cluster Management
+Mon Nov 9,12:13 PM,12:18 PM,Multi-Cluster Orchestration System: Karmada Updates and Use Cases,Michas Szacillo,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Karmada
+Mon Nov 9,12:20 PM,12:25 PM,K3s Lightning Update,Orlin Vasilev,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: K3s
+Mon Nov 9,12:27 PM,12:32 PM,What Changes When Crossplane Adoption Gets Real,"Mitchell Davis, Jared Watts",Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Crossplane
+Mon Nov 9,12:34 PM,12:39 PM,"etcd Operator, Rebuilt and Ready",Arka Saha,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: etcd
+Mon Nov 9,12:41 PM,12:46 PM,Is Service Mesh for Everyone?,Phil Henderson,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Linkerd
+Mon Nov 9,12:46 PM,1:30 PM,🍲 Lunch | On Own,,Project Lightning Talks,,Break,Hyatt Regency | Level 4 | Regency Ballroom B-D,
+Mon Nov 9,1:37 PM,1:42 PM,Project Lightning Talk – Project Overview,"Jorge Castro, Katherine Druckman",Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,
+Mon Nov 9,1:54 PM,1:59 PM,"Meshery: Your Cluster as a Knowledge Graph, Not a Pile of YAML",Yash Sharma,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Meshery
+Mon Nov 9,2:01 PM,2:06 PM,Envoy Turns 10: From Lyft's Sidecar to the Front Door of AI,Erica Hughberg,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Envoy
+Mon Nov 9,2:08 PM,2:13 PM,Rego Without Borders: Breaking Down Language Barriers for Security Policy,Philip Conrad,Project Lightning Talks,,Break,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Open Policy Agent (OPA)
+Mon Nov 9,2:15 PM,2:20 PM,KitOps: The Whole Kit for AI Agents,Gorkem Ercan,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: KitOps
+Mon Nov 9,2:22 PM,2:27 PM,"What's New in Kairos, 2026 Edition",William Rizzo,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Kairos
+Mon Nov 9,2:29 PM,2:34 PM,Kyverno: The Supercharged Future of Cloud Native Policy as Code,Suhani,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Kyverno
+Mon Nov 9,2:36 PM,2:41 PM,Lightning Harbor Update,Orlin Vasilev,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Harbor
+Mon Nov 9,2:43 PM,2:48 PM,Flatcar Container Linux: Growing the Cloud Native OS Ecosystem,Jan Bronicki,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Flatcar Container Linux
+Mon Nov 9,2:48 PM,3:03 PM,☕ Coffee Break,,Project Lightning Talks,,Break,Hyatt Regency | Level 4 | Regency Ballroom B-D,
+Mon Nov 9,3:03 PM,3:08 PM,Cedar Authorization with Incomplete Information,John Kastner,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Cedar
+Mon Nov 9,3:10 PM,3:15 PM,Metal3 Project Update! Whats New and Exciting?,Kashif Khan,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Metal3.io
+Mon Nov 9,3:17 PM,3:22 PM,Atlantis: What's New in IaC Orchestration,PePe Amengual,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Atlantis
+Mon Nov 9,3:24 PM,3:29 PM,Longhorn: The 2026 Wrap-up Edition,Divya Mohan,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Longhorn
+Mon Nov 9,3:31 PM,3:36 PM,ORAS Go v3: Batteries-Included Registry SDK,Terry Howe,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: ORAS
+Mon Nov 9,3:38 PM,3:43 PM,k0s – CNCF Sandbox Distro Updates,Prithvi Raj,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: k0s
+Mon Nov 9,3:45 PM,3:50 PM,"Velero: Faster Backups, Consistent Snapshots, Incremental Everything",Shubham Dilip Pampattiwar,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Velero
+Mon Nov 9,3:52 PM,3:57 PM,What's New in OVN-Kubernetes?,Surya Seetharaman,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: OVN-Kubernetes
+Mon Nov 9,3:59 PM,4:04 PM,Your Go-to Compliance-as-Skill: OSCAL Compass,Anca Sailer,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: OSCAL Compass
+Mon Nov 9,4:06 PM,4:11 PM,Kagent 1.0 with Agent Substrate,Peter Jausovec,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Kagent
+Mon Nov 9,4:13 PM,4:18 PM,"Your Routes, My Rules: Making Gateway API Work at Enterprise Scale",David Jumani,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: Kgateway
+Mon Nov 9,4:20 PM,4:25 PM,KAI Scheduler: What's New & What's Next in AI Workload Orchestration,Omri Cohen,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: KAI Scheduler
+Mon Nov 9,4:27 PM,4:32 PM,Stop Templating YAML: Build Configuration Supply Chains with kpt and Porch,Liam Fallon,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,Project: kpt
+Mon Nov 9,4:32 PM,4:35 PM,Project Lightning Talk Closing,Robert Sirchia,Project Lightning Talks,,Lightning Talk,Hyatt Regency | Level 4 | Regency Ballroom B-D,
+Tue Nov 10,7:30 AM,6:00 PM,Registration + Badge Pick-Up,,,,Registration,Salt Palace | 200 South Entrance (South),
+Tue Nov 10,7:30 AM,8:00 PM,Coat + Bag Check,,,,Registration,Salt Palace | Level 2 | East Registration,
+Tue Nov 10,9:00 AM,9:31 AM,Welcome + Opening Remarks,"Jonathan Bryce, Chris Aniszczyk, Robert Nishihara, Rita Zhang, Kevin Cochrane, Bassam Tabbara",Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,
+Tue Nov 10,9:33 AM,9:40 AM,Agent Substrate: Open Layers for Agentic Systems,"Jaana Dogan, Dmitry Berkovich, Tim Hockin, Eitan Yarmush, Luiz Scheidegger",Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,
+Tue Nov 10,9:42 AM,9:47 AM,Engineering Kubernetes for the Next Era of Workloads,Mike Stefaniak,Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,Sponsored
+Tue Nov 10,9:49 AM,9:56 AM,Building the Next Generation of AI with Open Source,"Warren Barkley, Ali Golshan",Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,
+Tue Nov 10,9:58 AM,10:03 AM,Sandbox Your Agents,Jessica Forrester,Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,Sponsored
+Tue Nov 10,10:05 AM,10:13 AM,Pods in the Wild: Reinforcement Learning on Kubernetes with OpenRL,"Sunil Arora, Ravin Kumar",Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,
+Tue Nov 10,10:15 AM,10:20 AM,The Harness Is the New Runtime,"Idit Levine, Keith Babo",Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,Sponsored
+Tue Nov 10,10:22 AM,10:27 AM,"One Kubernetes, Different Environments: Closing the Portability Gaps",Dilpreet Bindra,Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,
+Tue Nov 10,10:29 AM,10:39 AM,The Identity Crisis: Who is the AI Agent in Your Cluster?,Abdel Sghiouar,Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,
+Tue Nov 10,10:41 AM,10:46 AM,From Pod to Actuator: Physical AI and the Future of Kubernetes,Abhilash Somasamudramath,Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,
+Tue Nov 10,10:44 AM,10:45 AM,Closing Remarks,,Keynote Sessions,,Keynote,Salt Palace | Level 1 | Hall DE,
+Tue Nov 10,10:45 AM,11:30 AM,☕ Coffee Break,,,,Break,"Salt Palace | Level 1 | Halls A-C, Halls 1-5",
+Tue Nov 10,10:45 AM,7:30 PM,Poster Showcase (self-guided; presenters on hand Wednesday),,Poster Sessions,,Experience,"Salt Palace | Level 1 | Halls A-C, Halls 1-5",
+Tue Nov 10,10:45 AM,11:15 AM,"Gold In-Booth Demos: Cloudsmith (booth 175), Temporal (booth 171)",,Solutions Showcase,,Sponsored,"Salt Palace | Level 1 | Halls A-C, Halls 1-5",Cloudsmith: Patient zero is a dependency; Temporal: Worker Autoscaling on Kubernetes
+Tue Nov 10,10:45 AM,5:15 PM,Solutions Showcase,,Solutions Showcase,,Expo,"Salt Palace | Level 1 | Halls A-C, Halls 1-5",
+Tue Nov 10,10:45 AM,2:30 PM,Project Pavilion Kiosks | Tuesday Morning,,Project Opportunities,,Expo,Salt Palace | Level 1 | Hall 5 | Cosmic Canyon Zone | Project Pavilion,"Kiosks incl. Helm, Flux, Linkerd, Istio, Crossplane, Argo, OpenTelemetry, Kyverno, Falco and more"
+Tue Nov 10,10:50 AM,11:10 AM,Demo Theater: Agentic AI Needs Agentic Infrastructure: Autonomy on Kubernetes,Yodar Shafrir,Sponsor Demo Theater,,Sponsored,Salt Palace | Level 1 | Hall 1 | Alpine Overlook Zone | Demo Theater,
+Tue Nov 10,10:55 AM,11:15 AM,Project Pavilion Tour,Atulpriya Sharma,Project Pavilion Tours,,Tour,Salt Palace | Level 1 | Hall 5 | Cosmic Canyon Zone | Project Pavilion,
+Tue Nov 10,11:00 AM,11:02 AM,Welcome to Cloud Native University,"Danielle Cook, Simon Forster",Cloud Native Theater,,Cloud Native Theater,Salt Palace | Level 1 | Halls 5 | Cosmic Canyon Zone,
+Tue Nov 10,11:00 AM,12:00 PM,Women's Community Gathering,"Faseela Kundattil, Imma Valls, Cortney Nickerson",Inclusion + Accessibility,Any Level,Experience,Salt Palace | Level 1 | Grand Ballroom J,
+Tue Nov 10,11:00 AM,11:20 AM,Network Nook Meetup: 1st Time Attendees,,Network Nook,Any Level,Experience,Salt Palace | Level 1 | Hall 1 | Alpine Overlook Zone | Network Nook,
+Tue Nov 10,11:00 AM,11:15 AM,Cloud Native With a Chance of Tokens: Building the Skills for AI Inference,Alexa Griffith,Learning Lounge,,10-Minute Tip Talk,Salt Palace | Level 1 | Hall B | Starlight Summit Zone,
+Tue Nov 10,11:02 AM,11:14 AM,KubeCon + CloudNativeCon Kickoff: Your Map for the Week,"Simon Forster, Danielle Cook",Cloud Native Theater,,Cloud Native Theater,Salt Palace | Level 1 | Halls 5 | Cosmic Canyon Zone,
+Tue Nov 10,11:15 AM,11:35 AM,Demo Theater: Stop Running Mystery Meat in Production,Jeroen van Erp,Sponsor Demo Theater,,Sponsored,Salt Palace | Level 1 | Hall 1 | Alpine Overlook Zone | Demo Theater,
+Tue Nov 10,11:17 AM,11:29 AM,KubeSchool – Learn the Easiest Way Possible,Neil Cresswell,Cloud Native Theater,,Cloud Native Theater,Salt Palace | Level 1 | Halls 5 | Cosmic Canyon Zone,
+Tue Nov 10,11:30 AM,12:00 PM,Saturated by Design – Maximizing Cluster Allocation in On-Premises Kubernetes,"Dakota Sullivan, Isaac Wilson",Operations + Performance,Advanced,End User Talk,Salt Palace | Level 1 | Grand Ballroom ACE,
+Tue Nov 10,11:30 AM,12:00 PM,Securing Rural Colorado with Open Source: Running a Student-Led SOC on Kubernetes,Maciej Wal,Cloud Native Experience,Any Level,End User Talk,Salt Palace | Level 1 | Grand Ballroom BDF,
+Tue Nov 10,11:30 AM,12:00 PM,Ask Your Platform: Putting AI to Work Where the Questions Live,"Anton Alexander, Scott Adams",AI Inference + Agentic,Any Level,End User Talk,Salt Palace | Level 1 | Grand Ballroom H,
+Tue Nov 10,11:30 AM,12:00 PM,So You Want to Build a Platform? You Probably Already Have One,Juho Syrjänen,Platform Engineering,Any Level,End User Talk,Salt Palace | Level 1 | Grand Ballroom GI,
+Tue Nov 10,11:30 AM,12:00 PM,Why We Bet the Data Platform on Kubernetes – And How AI Is Changing How We Operate It,"Vara Bonthu, Ying Xiong, Rainie Li, Damon Cortesi, Padma Aradhyula",Data Processing + Storage,Beginner,End User Talk,Salt Palace | Level 1 | 151,
+Tue Nov 10,11:30 AM,12:00 PM,Your Agent Needs a Platform: Cloud Native Infrastructure for Multi-Agent AI Systems,Soham Ghadge,AI Inference + Agentic,Advanced,Talk,Salt Palace | Level 2 | 255 BC,
+Tue Nov 10,11:30 AM,12:00 PM,Will Your Gateway Leave You High and Dry?,"John Howard, Mitch Connors",Connectivity,Any Level,Talk,Salt Palace | Level 2 | 255 EF,
+Tue Nov 10,11:30 AM,12:00 PM,"One Recipe, Five Clouds, One Query: Portable GPU Configuration with a Queryable Audit Layer","Christopher Haar, Yuan Chen",Platform Engineering,Any Level,Talk,Hyatt Regency | Level 2 | Salt Lake Ballroom C,
+Tue Nov 10,11:30 AM,12:00 PM,Mythos vs Maintainers: Drowning in the Vulnerability Tsunami,"Fabian Kammel, John Kjell",Security,Any Level,Talk,Hyatt Regency | Level 2 | Salt Lake Ballroom DE,
+Tue Nov 10,11:30 AM,12:00 PM,Next Generation DevOps: Reshaping the Cloud Native DevOps Infinity Loop with AI,Rey Lejano,Cloud Native Novice,Beginner,Talk,Hyatt Regency | Level 4 | Regency Ballroom CD,
+Tue Nov 10,11:30 AM,12:50 PM,Autoscaling Reality Check: The Hands-On HTTP Optimization Challenge,David Pech,Cloud Native Experience,Any Level,Tutorial,Hyatt Regency | Level 4 | Regency Ballroom A,
+Tue Nov 10,11:30 AM,12:00 PM,SIG Instrumentation Introduction and Deep Dive,"Catherine Fang, David Ashpole",Maintainer Track,,Maintainer Track,Salt Palace | Level 2 | 250 A-C,
+Tue Nov 10,11:30 AM,12:00 PM,SIG Network Intro and Updates,"Surya Seetharaman, Guilherme Cassolato, Austin Abro, Bowei Du",Maintainer Track,,Maintainer Track,Salt Palace | Level 2 | 250 D-F,
+Tue Nov 10,11:30 AM,12:00 PM,Steering the Ship: Ask the Kubernetes Steering Committee,"Kat Cosgrove, Maciej Szulik, Paco Xu, Michael McCune",Maintainer Track,,Maintainer Track,Salt Palace | Level 2 | 251 A-C,
+Tue Nov 10,11:30 AM,12:00 PM,"New Traffic, New Rules: Standardizing AI-Aware Networking in Kubernetes","Nir Rozenbaum, Keith Mattix",Maintainer Track,,Maintainer Track,Salt Palace | Level 2 | 251 D-F,
+Tue Nov 10,11:30 AM,12:00 PM,SIG Autoscaling Project Updates,"Jack Francis, Jason Deal, Heba Elayoty, Kuba Tużnik",Maintainer Track,,Maintainer Track,Salt Palace | Level 2 | 254,
+Tue Nov 10,11:30 AM,12:50 PM,Harbor ContribFest,"Orlin Vasilev, Vadim Bauer",Contribfest,,ContribFest,Salt Palace | Level 2 | 255 A,
+Tue Nov 10,11:30 AM,12:50 PM,OpenTelemetry Contribfest,"Reese Lee, Tyler Yahn, Diana Todea, Dmitry Anoshin, Evan Bradley, Braydon Kains",Contribfest,,ContribFest,Salt Palace | Level 2 | 255 D,
+Tue Nov 10,11:30 AM,1:30 PM,An Introduction to Capture The Flag,"Vicente Herrera, Torin van den Bulk",Project Pavilion Stage,,Experience,Salt Palace | Level 1 | Hall 5 | Cosmic Canyon Zone | Project Pavilion,
+Tue Nov 10,11:32 AM,11:44 AM,Cloud Native Operators and You,Corey McGalliard,Cloud Native Theater,,Cloud Native Theater,Salt Palace | Level 1 | Halls 5 | Cosmic Canyon Zone,
+Tue Nov 10,11:40 AM,12:00 PM,Demo Theater: DO NOT Give AI Agents Credentials!,Christian Posta,Sponsor Demo Theater,,Sponsored,Salt Palace | Level 1 | Hall 1 | Alpine Overlook Zone | Demo Theater,
+Tue Nov 10,11:47 AM,11:59 AM,AI on Kubernetes Is Just a Pod With a GPU (and That's the Problem),Graziano Casto,Cloud Native Theater,,Cloud Native Theater,Salt Palace | Level 1 | Halls 5 | Cosmic Canyon Zone,
+Tue Nov 10,12:02 PM,12:14 PM,"Supply Chain, Runtime and SDLC: A Cloud Native Security Overview",Dr. Constanze Roedig,Cloud Native Theater,,Cloud Native Theater,Salt Palace | Level 1 | Halls 5 | Cosmic Canyon Zone,
+Tue Nov 10,12:05 PM,12:25 PM,Demo: How Hertz Made Karpenter and standard EKS Smarter with autonomous AI-Driven Optimization,Sonal Kumar Sinha,Sponsor Demo Theater,,Sponsored,Salt Palace | Level 1 | Hall 1 | Alpine Overlook Zone | Demo Theater,
+Tue Nov 10,12:17 PM,12:29 PM,Cluster API in 15 Minutes. A Primer on Declarative Kubernetes Infrastructure,William Rizzo,Cloud Native Theater,,Cloud Native Theater,Salt Palace | Level 1 | Halls 5 | Cosmic Canyon Zone,
+Tue Nov 10,12:20 PM,12:50 PM,Surviving the Churn: Read Replicas and Controllers for Busy Kubernetes Clusters,Ryan Brewster,Operations + Performance,Advanced,End User Talk,Salt Palace | Level 1 | Grand Ballroom ACE,
+Tue Nov 10,12:20 PM,12:50 PM,Stop Explaining Kubernetes Like a Kubernetes Engineer,Sofia Sarhiri,Cloud Native Experience,Any Level,End User Talk,Salt Palace | Level 1 | Grand Ballroom BDF,
+Tue Nov 10,12:20 PM,12:50 PM,What the Docs Don't Tell You: A Telecom's Year Operating Cache-Aware LLM Inference on Kubernetes,"YoungJoon Jeong, Seol Heo",AI Inference + Agentic,Advanced,End User Talk,Salt Palace | Level 1 | Grand Ballroom H,
+Tue Nov 10,12:20 PM,12:50 PM,When Infrastructure Breaks in Production: How EarnIn Brought Testing to the Full CNCF Stack,Priya Namasivayam,Platform Engineering,Any Level,End User Talk,Salt Palace | Level 1 | Grand Ballroom GI,
+Tue Nov 10,12:20 PM,12:50 PM,"Signed, Sealed, Denied: Attestation-Driven Admission with Kyverno + CEL at AT&T","Chad Swenson, Sagar Kundral",Security,Any Level,End User Talk,Salt Palace | Level 1 | 151,
+Tue Nov 10,12:20 PM,12:50 PM,"LTS, EOL, CVEs: Solutions for Stress-Inducing Scenarios","Bridget Kromhout, Lachlan Evenson",Cloud Native Experience,Any Level,Talk,Salt Palace | Level 2 | 255 BC,
