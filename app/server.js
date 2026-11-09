@@ -362,6 +362,7 @@ async function route(req, res, url) {
     return send(res, 200, 'application/json', JSON.stringify({ version, user: user.username, sessions }));
   }
   if (url.pathname === '/map') {
+    // TODO(integrated-map): Share structured map data and floor assets with the dashboard; preserve standalone location links.
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
     const { rows: [mapData] } = await pool.query(`
       SELECT

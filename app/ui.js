@@ -41,6 +41,7 @@ function scheduleHtml(schedule) {
 }
 
 function dashboard(schedule, {team, version, user}) {
+ // TODO(integrated-map): Pair the schedule with shared map/details and a mobile sheet; see docs/superpowers/specs/2026-11-09-integrated-schedule-map-design.md.
  const days = [...new Map(schedule.map(s => [s.date, s.day])).entries()];
  const tracks = [...new Set(schedule.map(s => s.track || s.format || 'General'))].sort();
  const venues = new Set(schedule.map(s => s.venue).filter(Boolean));

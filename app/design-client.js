@@ -59,6 +59,7 @@
  document.querySelector('#jump-sessions').addEventListener('click', () => {document.querySelector('#sessions').scrollIntoView({behavior:'smooth'}); input.focus({preventScroll:true});});
  document.addEventListener('keydown', e => {if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {e.preventDefault(); input.focus();}});
  const dialog = document.querySelector('#session-dialog');
+ // TODO(integrated-map): Replace the modal with shared details and same-floor/top-down versus different-floor/stack transitions.
  document.querySelectorAll('[data-details]').forEach(b => b.addEventListener('click', () => {
   const row = b.closest('.session');
   const content = document.querySelector('#dialog-content'); content.replaceChildren();
