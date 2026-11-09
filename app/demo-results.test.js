@@ -3,6 +3,28 @@ const assert = require('node:assert/strict');
 const { demoResults, isActualEvent } = require('./demo-results');
 const event={id:45,title:'From Kernel to Kubectl in 30 Seconds: eBPF Observability with Inspektor Gadget',format:'Lightning Talk',track:'Project Lightning Talks',final:true,participants:0,words:[]};
 
+test('demo timeline uses exact card choices and reconciles every report within the event',()=>{
+  const timed={...event,starts_at:'2026-11-09T18:00:00Z',ends_at:'2026-11-09T18:22:30Z'};
+  const demo=demoResults(timed);
+  assert.deepEqual(demo,demoResults(timed));
+  assert.equal(demo.timeline.durationMinutes,22.5);
+  assert.equal(demo.timeline.bucketMinutes,1);
+  assert.deepEqual(demo.timeline.words.map(w=>w.key),demo.words.map(w=>w.key));
+  for(const row of demo.timeline.words){
+    assert.equal(row.buckets.reduce((sum,b)=>sum+b.count,0),demo.words.find(w=>w.key===row.key).reported);
+    assert.ok(row.buckets.every(b=>Number.isInteger(b.minute)&&b.minute>=0&&b.minute<22.5&&Number.isInteger(b.count)&&b.count>0));
+    assert.equal(new Set(row.buckets.map(b=>b.minute)).size,row.buckets.length);
+  }
+  assert.deepEqual(demo.words,demoResults(event).words);
+  assert.deepEqual(demo.choices,demoResults(event).choices);
+  for(const ends_at of [timed.starts_at,'invalid','2026-11-09T17:00:00Z']){
+    assert.equal(demoResults({...timed,ends_at}).timeline,null);
+  }
+  assert.equal(demoResults(event).timeline,null);
+  const short=demoResults({...timed,ends_at:'2026-11-09T18:00:30Z'});
+  assert.ok(short.timeline.words.every(w=>w.buckets.every(b=>b.minute===0)));
+});
+
 test('demo results are deterministic aggregate-only fixtures with valid exposure counts',()=>{
   const demo=demoResults(event);
   assert.deepEqual(demo,demoResults(event));

@@ -93,6 +93,7 @@ async function aggregateResults(db, sessionId) {
   // Aggregate inside Postgres: account identifiers and individual cards never leave this query.
   const { rows } = await db.query(`WITH events AS (
     SELECT s.id,s.title,s.format,t.name AS track,
+      (d.event_date+s.start_time) AT TIME ZONE 'America/Denver' AS starts_at,
       (d.event_date+s.end_time) AT TIME ZONE 'America/Denver' AS ends_at
     FROM sessions s JOIN days d ON d.id=s.day_id LEFT JOIN tracks t ON t.id=s.track_id
     WHERE NOT s.hidden AND ($1::int IS NULL OR s.id=$1)
@@ -118,7 +119,7 @@ async function aggregateResults(db, sessionId) {
         shown: w.shown, reported: w.reported, rate: w.shown ? w.reported / w.shown : null });
     }
     const window = bingoWindow(row.ends_at, new Date(row.observed_at).getTime());
-    return { id: row.id, title: row.title, format: row.format, track: row.track, source: 'attendee', ends_at: row.ends_at.toISOString(),
+    return { id: row.id, title: row.title, format: row.format, track: row.track, source: 'attendee', starts_at: row.starts_at.toISOString(), ends_at: row.ends_at.toISOString(),
       closesAt: window.closesAt, final: window.final, participants: row.participants,
       observedAt: row.observed_at.toISOString(),
       words: [...vocabulary.values()].sort((a,b) => b.reported-a.reported || a.word.localeCompare(b.word)) };

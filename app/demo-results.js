@@ -28,8 +28,28 @@ function demoResults(result) {
       if(random()<popularity.get(key)) word.reported++;
     }
   }
-  return {...result,source:'synthetic',participants,choices,
-    words:[...words.values()].map(w=>({...w,rate:w.shown?w.reported/w.shown:null}))
-      .sort((a,b)=>b.reported-a.reported || a.word.localeCompare(b.word))};
+  const sortedWords=[...words.values()].map(w=>({...w,rate:w.shown?w.reported/w.shown:null}))
+    .sort((a,b)=>b.reported-a.reported || a.word.localeCompare(b.word));
+  return {...result,source:'synthetic',participants,choices,words:sortedWords,
+    timeline:demoTimeline(result,sortedWords)};
+}
+
+function demoTimeline(event, words) {
+  const durationMinutes=(Date.parse(event.ends_at)-Date.parse(event.starts_at))/60000;
+  if (!Number.isFinite(durationMinutes) || durationMinutes<=0) return null;
+  // A separate seed preserves the existing cards and totals as timing is added.
+  let seed=createHash('sha256').update(`bingo-timing-v1:${event.id}:${event.title}`).digest().readUInt32LE(0)||1;
+  const random=()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return(seed>>>0)/4294967296;};
+  return {durationMinutes,bucketMinutes:1,words:words.map(({key,word,reported})=>{
+    const peak=0.1+random()*0.8, spread=0.04+random()*0.09;
+    const counts=new Map();
+    for(let mark=0;mark<reported;mark++){
+      // Most reports cluster around an invented mention; a few occur elsewhere.
+      const fraction=random()<0.85 ? peak+(random()+random()-1)*spread : random();
+      const minute=Math.min(Math.ceil(durationMinutes)-1,Math.max(0,Math.floor(fraction*durationMinutes)));
+      counts.set(minute,(counts.get(minute)||0)+1);
+    }
+    return {key,word,buckets:[...counts].sort((a,b)=>a[0]-b[0]).map(([minute,count])=>({minute,count}))};
+  })};
 }
 module.exports={demoResults,isActualEvent};

@@ -137,6 +137,10 @@ test('Postgres enforces bingo deadlines and aggregates distinct current reports'
     assert.equal(result.source,'attendee');
     const demo=await (await request(`/api/sessions/${demoSession.id}/buzzwords`)).json();
     assert.equal(demo.source,'synthetic');assert.ok(demo.participants>0);
+    assert.equal((Date.parse(demo.ends_at)-Date.parse(demo.starts_at))/60000,60);
+    assert.equal(demo.timeline.durationMinutes,60);
+    assert.deepEqual(demo.timeline.words.map(w=>w.buckets.reduce((n,b)=>n+b.count,0)),demo.words.map(w=>w.reported));
+    assert.equal(result.timeline,undefined);
     assert.match(await (await request(`/sessions/${demoSession.id}/results`)).text(),/Synthetic demo data/);
     assert.match(await (await request(`/bingo/${demoSession.id}`)).text(),/New cards are closed/);
     assert.equal(await store.loadCard(pool,user,demoSession.id),null);

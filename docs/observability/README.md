@@ -70,6 +70,18 @@ accounts, stored cards, clicks or prize winners and never changes database data.
 The fixed v1 seed makes repeated reads stable. Aggregate metrics remain under
 `bingo_*`; invented samples use separate `bingo_demo_*` instruments.
 
+Both sources share the styled word cloud: stable colors per word, weighted type,
+and counts available on focus/hover and in the existing table. Only synthetic
+results include the dot timeline. Its `timeline` JSON contains the scheduled
+duration and deterministic one-minute counts that sum to each word's existing
+report total. The display combines minutes into at most 30 groups for legibility
+on longer events, with a matching accessible table. Dot area encodes count using
+one scale across all rows; colors match the cloud. Zero-report choices remain.
+Missing or invalid scheduled times produce `timeline: null` and an unavailable
+message. No timestamps are collected for real marks, and timing is not exported
+to Dash0. The plot covers scheduled event time; a separate note explains the
+ten-minute correction window afterward. All demo timing is explicitly invented.
+
 In demo mode, history excludes registration, coat/bag checks, coffee/lunch breaks,
 opening/closing remarks, expo listings and generic project-overview placeholders.
 Known talks, keynotes, maintainer sessions, contribution sessions, scheduled
