@@ -7,6 +7,7 @@ const SCHEDULE_QUERY = `
          to_char(d.event_date, 'YYYY-MM-DD') AS date,
          to_char(s.start_time, 'HH24:MI') AS start_time,
          to_char(s.end_time, 'HH24:MI') AS end_time,
+         (d.event_date + s.start_time) AT TIME ZONE 'America/Denver' AS starts_at,
          (d.event_date + s.end_time) AT TIME ZONE 'America/Denver' AS ends_at,
          s.title,
          t.name AS track,
@@ -17,6 +18,7 @@ const SCHEDULE_QUERY = `
          l.room,
          l.id AS location_id,
          ARRAY(SELECT room_id FROM session_rooms WHERE session_id = s.id ORDER BY room_id) AS room_ids,
+         ARRAY(SELECT game FROM session_games WHERE session_id = s.id ORDER BY game) AS games,
          s.notes,
          COALESCE(string_agg(sp.name, ', ' ORDER BY sp.name), '') AS speakers
   FROM sessions s
