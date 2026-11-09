@@ -8,6 +8,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - httproute.yaml
+  - database.yaml
 images:
   - name: app
     newName: ghcr.io/stg-fryte/infra
