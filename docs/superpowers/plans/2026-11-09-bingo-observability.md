@@ -23,28 +23,60 @@ identifying analytics labels. Preserve upcoming schedule behavior.
 
 ## Tasks
 
-1. Cutoffs and aggregate storage (`bingo.js`, new `bingo-store.js`, migration 008).
-   - [ ] Write failing cutoff, idempotence and aggregation tests.
-   - [ ] Implement pure `bingoWindow(endsAt, now)` and `expectedWords(session)`.
-   - [ ] Implement `startCard`, `markCard`, `loadResults`, `loadAllResults` against pg.
-   - [ ] Test real Postgres writes, deadlines, concurrency and counts.
+1. Cutoffs and aggregate storage (`bingo.js`, new `bingo-store.js`, migration 009).
+   - [x] Write failing cutoff, idempotence and aggregation tests.
+   - [x] Implement pure `bingoWindow(endsAt, now)` and `expectedWords(session)`.
+   - [x] Implement `startCard`, `markCard`, `loadResults`, `loadAllResults` against pg.
+   - [x] Test real Postgres writes, deadlines, concurrency and counts.
 2. Application flow (`server.js`, `ui.js`, new `results-ui.js`, `design.css`).
-   - [ ] Test authenticated history/results and explicit starts before coding routes.
-   - [ ] Add `/history`, `/sessions/:id/results`, `/api/sessions/:id/buzzwords`, `/privacy`.
-   - [ ] Show start notice, read-only cards and provisional/final counts/cloud/table.
-   - [ ] Verify stale-page responses, HTML escaping, empty states and responsive layouts.
+   - [x] Test authenticated history/results and explicit starts before coding routes.
+   - [x] Add `/history`, `/sessions/:id/results`, `/api/sessions/:id/buzzwords`, `/privacy`.
+   - [x] Show start notice, read-only cards and provisional/final counts/cloud/table.
+   - [x] Verify stale-page responses, HTML escaping, empty states and responsive layouts.
 3. Telemetry (`observability.js`, package files, deployment annotations/env, dashboard/docs).
-   - [ ] Test metric output and nonblocking exporter failure.
-   - [ ] Add Prometheus scrape and optional OTLP export with allowlisted labels.
-   - [ ] Add deduplicated aggregate dashboard and configuration instructions.
-   - [ ] Verify metrics and OTLP locally; run the complete suite.
+   - [x] Test metric output and nonblocking exporter failure.
+   - [x] Add Prometheus scrape and optional OTLP export with allowlisted labels.
+   - [x] Add deduplicated aggregate dashboard and configuration instructions.
+   - [x] Verify metrics and OTLP locally; run the complete suite.
 4. Review and delivery.
-   - [ ] Fresh code review, resolve substantive findings, commit.
-   - [ ] Push to main per AGENTS.md, verify matching Action and pull deploy commit.
-   - [ ] Verify Argo revision, image, rollout and URL via Radar when connected.
+   - [x] Fresh code review, resolve substantive findings, commit.
+   - [x] Push to main per AGENTS.md, verify matching Action and pull deploy commit.
+   - [x] Verify Argo revision, image, rollout and URL via Radar when connected.
 
 ## Execution notes
 
 The user explicitly requested implementation of the discussed recommendation;
 no repeat design-approval step is needed. Radar/Dash0 setup details requested while
 local work proceeds. Current checkout is clean and matches origin/main.
+
+## Verified delivery and PR follow-up
+
+Initial implementation: 0f3f3cb, build 42711604034 succeeded; deploy commit c18f815.
+Radar showed the synced c18f815 revision and two ready replicas of infra:0f3f3cb.
+The public privacy page served that version; history/results were inspected in the
+signed-in browser. Dash0 received metrics in the default dataset. Token is metrics
+ ingestion only and stays in the non-git dash0-telemetry Secret.
+
+Final review fixed three substantive issues with regression tests: prize-lock
+waits changing final results, shutdown interrupting HTTP requests, and malformed
+optional OTLP configuration preventing startup. Rebased onto concurrent profile,
+search and hidden-event work; 40 tests passed after integration.
+
+User then requested PR delivery and chose to keep the deployed implementation live.
+All remaining work is in PR #14; no more direct main pushes. User also approved
+clearly labeled invented past-event data after PR merge. This adds aggregate-only
+deterministic samples for actual completed events with no real cards, HTML/JSON
+source labels, and separate bingo_demo_* metrics. Local suite: 43 passed.
+
+Ruling: use the logged-in Radar browser because Radar MCP tools are unavailable and
+the user explicitly requested browser configuration. This limits scripted cluster
+checks, so revision, image, ready replicas and public version were verified in UI.
+Ruling: exclude unknown content formats from synthetic data rather than treating
+all schedule rows as talks. An unsupported actual event may need a format added.
+Final PR review fixed a classification issue: all known substantive formats,
+including future keynotes and maintainer sessions, now remain in past-event history.
+Regression test failed before the fix; complete suite passed 43/43 afterward.
+User refinement: sample counts must match the bingo choices. Each demo now derives
+from one fixed card generated by buildCard; only its 24 non-FREE choices can be
+reported. The exact card is available in the results disclosure and JSON. A test
+asserts equality of the choice set and reported-word set; complete suite passed.

@@ -50,6 +50,9 @@ spec:
                   name: es-credentials
                   key: api_key
                   optional: true
+            # Demo fixtures are aggregate-only and visibly labeled; no fake cards.
+            - name: BINGO_DEMO_RESULTS
+              value: "true"
             - name: POD_UID
               valueFrom:
                 fieldRef:

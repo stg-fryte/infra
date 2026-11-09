@@ -4,6 +4,7 @@ const SESSION_SQL = `SELECT s.id, s.title, s.notes, t.name AS track,
   l.venue,l.level AS floor,l.room,
   (SELECT string_agg(sp.name, ', ' ORDER BY sp.name) FROM session_speakers ss
    JOIN speakers sp ON sp.id=ss.speaker_id WHERE ss.session_id=s.id) AS speakers,
+  (d.event_date + s.start_time) AT TIME ZONE 'America/Denver' AS starts_at,
   (d.event_date + s.end_time) AT TIME ZONE 'America/Denver' AS ends_at,
   p.prize, p.winner_user_id, w.username AS winner
   FROM sessions s JOIN days d ON d.id=s.day_id JOIN locations l ON l.id=s.location_id
@@ -12,7 +13,8 @@ const SESSION_SQL = `SELECT s.id, s.title, s.notes, t.name AS track,
   LEFT JOIN users w ON w.id=p.winner_user_id`;
 
 async function loadSession(db, id) {
-  return (await db.query(`${SESSION_SQL} WHERE s.id=$1 AND NOT s.hidden`, [id])).rows[0] || null;
+  return (await db.query(`${SESSION_SQL} WHERE s.id=$1 AND NOT s.hidden
+    AND EXISTS (SELECT 1 FROM session_games g WHERE g.session_id=s.id AND g.game='bingo')`, [id])).rows[0] || null;
 }
 
 async function loadCard(db, userId, sessionId) {
@@ -29,6 +31,8 @@ async function startCard(pool, userId, sessionId) {
     await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`bingo:${userId}:${sessionId}`]);
     const session = await loadSession(db, sessionId);
     if (!session) return { status: 'missing' };
+    const { rows: [timing] } = await db.query('SELECT clock_timestamp() >= $1::timestamptz AS started',[session.starts_at]);
+    if (!timing.started) return { status: 'not_started' };
     const existing = await loadCard(db, userId, sessionId);
     if (existing) return { status: 'ok' };
     const { rowCount } = await db.query(`INSERT INTO bingo_cards(user_id,session_id,cells,created_at)
@@ -61,6 +65,7 @@ async function markCard(pool, userId, sessionId, index, checked) {
            ELSE array_remove(c.marked,$2) END
       FROM sessions s JOIN days d ON d.id=s.day_id
       WHERE c.id=$1 AND s.id=c.session_id
+        AND clock_timestamp() >= (d.event_date+s.start_time) AT TIME ZONE 'America/Denver'
         AND c.created_at < (d.event_date+s.end_time) AT TIME ZONE 'America/Denver'
         AND clock_timestamp() < ((d.event_date+s.end_time) AT TIME ZONE 'America/Denver') + interval '10 minutes'
       RETURNING c.marked`, [card.id, index, checked]);
@@ -92,7 +97,8 @@ async function loadAllResults(pool, sessionId = null) {
 async function aggregateResults(db, sessionId) {
   // Aggregate inside Postgres: account identifiers and individual cards never leave this query.
   const { rows } = await db.query(`WITH events AS (
-    SELECT s.id,s.title,t.name AS track,
+    SELECT s.id,s.title,s.format,t.name AS track,
+      (d.event_date+s.start_time) AT TIME ZONE 'America/Denver' AS starts_at,
       (d.event_date+s.end_time) AT TIME ZONE 'America/Denver' AS ends_at
     FROM sessions s JOIN days d ON d.id=s.day_id LEFT JOIN tracks t ON t.id=s.track_id
     WHERE NOT s.hidden AND ($1::int IS NULL OR s.id=$1)
@@ -118,7 +124,7 @@ async function aggregateResults(db, sessionId) {
         shown: w.shown, reported: w.reported, rate: w.shown ? w.reported / w.shown : null });
     }
     const window = bingoWindow(row.ends_at, new Date(row.observed_at).getTime());
-    return { id: row.id, title: row.title, track: row.track, ends_at: row.ends_at.toISOString(),
+    return { id: row.id, title: row.title, format: row.format, track: row.track, source: 'attendee', starts_at: row.starts_at.toISOString(), ends_at: row.ends_at.toISOString(),
       closesAt: window.closesAt, final: window.final, participants: row.participants,
       observedAt: row.observed_at.toISOString(),
       words: [...vocabulary.values()].sort((a,b) => b.reported-a.reported || a.word.localeCompare(b.word)) };

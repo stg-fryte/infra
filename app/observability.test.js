@@ -34,6 +34,12 @@ test('metrics use aggregate gauges, safe route labels and current snapshots', as
   assert.match(output,/route="\/bingo\/:id\/mark"/);
   assert.doesNotMatch(output,/secret|123|private-user|user_id|cookie/);
   assert.match(output,/db_query_duration/);
+  telemetry.updateDemoResults([{id:45,participants:30,final:true,source:'synthetic',words:[{key:'ebpf',reported:15,shown:20}]}]);
+  const demoOutput=await scrape();
+  assert.match(demoOutput,/bingo_demo_word_reported\{[^\n]*session_id="45"[^\n]*\} 15/);
+  assert.doesNotMatch(demoOutput,/bingo_word_reported\{[^\n]*session_id="45"/);
+  telemetry.updateDemoResults([]);
+  assert.match(await scrape(),/bingo_demo_word_reported\{[^\n]*session_id="45"[^\n]*\} NaN/);
   telemetry.updateResults([{...fixture[0],words:[{key:'kubernetes',reported:0,shown:2}]}]);
   assert.match(await scrape(),/bingo_word_reported\{[^\n]*\} 0/);
   telemetry.updateResults(fixture,0);
