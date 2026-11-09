@@ -34,6 +34,9 @@ block requests. Changing the Secret requires a GitOps rollout to reload env vars
 
 ## Dashboard
 
+Dashboard validation is being completed in a separate PR. The deployed app and
+Dash0 credential configuration stay live; merging the follow-up is user-controlled.
+
 Import `dash0-dashboard.json` using Dashboards → Add → Edit as JSON. Use the default
 dataset. Enter a numeric Session ID from the application's results URL, or `.*`
 for all sessions. Tables use instant values so an unmark can reduce the current
