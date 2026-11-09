@@ -328,6 +328,52 @@ async function handleBingo(req, res, user, match) {
   return send(res, 200, 'text/html; charset=utf-8', bingoHtml(user, session, card));
 }
 
+const SAVED_PATH = /^\/api\/saved(?:\/(\d{1,9}))?$/;
+
+async function loadSavedIds(userId) {
+  const { rows } = await pool.query(
+    'SELECT session_id FROM saved_sessions WHERE user_id = $1 ORDER BY session_id',
+    [userId],
+  );
+  return rows.map((row) => row.session_id);
+}
+
+async function handleSaved(req, res, user, match) {
+  const json = (status, body) => send(res, status, 'application/json', JSON.stringify(body));
+  const sessionId = match[1] ? Number(match[1]) : null;
+  if (sessionId === null) {
+    if (req.method === 'GET') return json(200, { ids: await loadSavedIds(user.id) });
+    if (req.method !== 'POST') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET, POST' });
+    const ids = (await readForm(req)).get('ids')?.split(',').map(Number).filter(Number.isInteger) ?? [];
+    await pool.query(
+      `INSERT INTO saved_sessions (user_id, session_id)
+       SELECT $1, id FROM sessions WHERE id = ANY($2::int[])
+       ON CONFLICT DO NOTHING`,
+      [user.id, ids],
+    );
+    return json(200, { ids: await loadSavedIds(user.id) });
+  }
+  if (req.method === 'PUT') {
+    const { rows } = await pool.query(
+      `WITH existing AS (SELECT id FROM sessions WHERE id = $2),
+            inserted AS (
+              INSERT INTO saved_sessions (user_id, session_id)
+              SELECT $1, id FROM existing
+              ON CONFLICT DO NOTHING
+            )
+       SELECT id FROM existing`,
+      [user.id, sessionId],
+    );
+    if (rows.length === 0) return json(404, { error: 'not found' });
+    return json(200, { id: sessionId, saved: true });
+  }
+  if (req.method === 'DELETE') {
+    await pool.query('DELETE FROM saved_sessions WHERE user_id = $1 AND session_id = $2', [user.id, sessionId]);
+    return json(200, { id: sessionId, saved: false });
+  }
+  return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'PUT, DELETE' });
+}
+
 async function route(req, res, url) {
   if (url.pathname === '/healthz') return send(res, 200, 'text/plain', 'ok\n');
   if (url.pathname === BOOTSTRAP_CSS_URL && req.method === 'GET') {
@@ -366,6 +412,9 @@ async function route(req, res, url) {
     const source = await readFile(path.join(__dirname, path.basename(url.pathname)), 'utf8');
     return send(res, 200, 'text/javascript; charset=utf-8', source, { 'cache-control': 'private, max-age=300' });
   }
+
+  const savedMatch = SAVED_PATH.exec(url.pathname);
+  if (savedMatch) return handleSaved(req, res, user, savedMatch);
 
   if (url.pathname === '/api/sessions') {
     const sessions = await loadSchedule();
@@ -407,7 +456,8 @@ async function route(req, res, url) {
   }
   if (url.pathname === '/') {
     const schedule = await loadSchedule();
-    return send(res, 200, 'text/html; charset=utf-8', ui.dashboard(schedule, { team, version, user }));
+    const savedIds = await loadSavedIds(user.id);
+    return send(res, 200, 'text/html; charset=utf-8', ui.dashboard(schedule, { team, version, user, savedIds }));
   }
   send(res, 404, 'text/plain', 'not found\n');
 }

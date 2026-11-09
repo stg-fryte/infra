@@ -7,8 +7,7 @@
  const track = document.querySelector('#track-filter');
  const storageKey = 'kube-companion-saved:' + shell.dataset.user;
  const viewKey = 'kube-companion-view:' + shell.dataset.user;
- let saved = new Set();
- try { const parsed = JSON.parse(localStorage.getItem(storageKey) || '[]'); if (Array.isArray(parsed)) saved = new Set(parsed.map(String)); } catch {}
+ const saved = new Set((shell.dataset.saved || '').split(',').filter(Boolean));
  let selectedDay = (tabs.find(t => t.getAttribute('aria-selected') === 'true') || tabs[0])?.dataset.day;
  let mode = 'explore';
  try {
@@ -62,13 +61,35 @@
   if (mode === 'saved') {const first = all.find(r => saved.has(r.dataset.id) && Date.parse(r.dataset.endsAt) > Date.now()); if (first) selectedDay = first.dataset.date;}
   update(); document.querySelector('#sessions').scrollIntoView({behavior:'smooth', block:'start'});
  }));
- document.querySelectorAll('[data-save]').forEach(b => b.addEventListener('click', () => {
+ document.querySelectorAll('[data-save]').forEach(b => b.addEventListener('click', async () => {
   const id = b.closest('.session').dataset.id;
   const removing = saved.has(id);
   removing ? saved.delete(id) : saved.add(id);
-  try {localStorage.setItem(storageKey, JSON.stringify([...saved])); notify(removing ? 'Removed from your schedule' : 'Added to your schedule');} catch {notify('Saved for this visit. Browser storage is unavailable.');}
   update();
+  try {
+   const response = await fetch('/api/saved/' + encodeURIComponent(id), {method: removing ? 'DELETE' : 'PUT', credentials: 'same-origin'});
+   if (!response.ok) throw new Error('status ' + response.status);
+   notify(removing ? 'Removed from your schedule' : 'Added to your schedule');
+  } catch {
+   removing ? saved.add(id) : saved.delete(id);
+   update();
+   notify('Could not update your schedule. Try again.');
+  }
  }));
+ async function importLocalSaved() {
+  let local = [];
+  try { const parsed = JSON.parse(localStorage.getItem(storageKey) || '[]'); if (Array.isArray(parsed)) local = parsed.map(String); } catch { return; }
+  if (!local.length) return;
+  try {
+   const response = await fetch('/api/saved', {method: 'POST', credentials: 'same-origin', body: new URLSearchParams({ids: local.join(',')})});
+   if (!response.ok) return;
+   (await response.json()).ids.forEach(id => saved.add(String(id)));
+   localStorage.removeItem(storageKey);
+   update();
+   notify('Moved your saved sessions to your account');
+  } catch {}
+ }
+ importLocalSaved();
  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
   document.querySelector('#session-list').classList.toggle('compact', b.dataset.view === 'compact');
   update();
