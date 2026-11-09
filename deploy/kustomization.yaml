@@ -12,4 +12,4 @@ resources:
 images:
   - name: app
     newName: ghcr.io/stg-fryte/infra
-    newTag: "a5827bc"
+    newTag: "ab8e6f6"
