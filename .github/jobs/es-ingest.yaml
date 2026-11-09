@@ -1,0 +1,38 @@
+# Manifest for the one-off ingest Job (see .github/workflows/es-ingest.yaml).
+# The workflow substitutes __JOB_NAME__ and __IMAGE__, then applies this to
+# the cluster. It deliberately lives outside deploy/ so Argo CD does not
+# reconcile it; the Job TTLs itself out an hour after finishing.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __JOB_NAME__
+  namespace: team-stg-fryte
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: ingest
+          image: __IMAGE__
+          command: [node, ingest-schedule.js]
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            seccompProfile: { type: RuntimeDefault }
+            capabilities: { drop: [ALL] }
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: db-app, key: uri }
+            - name: ES_URL
+              valueFrom:
+                secretKeyRef: { name: es-credentials, key: url }
+            - name: ES_API_KEY
+              valueFrom:
+                secretKeyRef: { name: es-credentials, key: api_key }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
