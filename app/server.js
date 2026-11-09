@@ -73,6 +73,7 @@ function scheduleHtml(schedule) {
           const speakers = s.speakers ? `<div class="small text-body-secondary">${escapeHtml(s.speakers)}</div>` : '';
           const notes = s.notes ? `<span class="badge text-bg-warning ms-1">${escapeHtml(s.notes)}</span>` : '';
           return `<tr><td class="text-nowrap">${escapeHtml(s.start_time)}&ndash;${escapeHtml(s.end_time)}</td>
+<!-- TODO: Link the event title to /map using its schedule location ID. -->
 <td><div>${escapeHtml(s.title)}${notes}</div><div class="small text-body-secondary">${meta}</div>${speakers}</td>
 <td class="small">${escapeHtml(locationLabel(s))}</td></tr>`;
         })
@@ -318,6 +319,7 @@ async function route(req, res, url) {
       SELECT
         (SELECT coalesce(json_agg(rooms ORDER BY id), '[]') FROM rooms) AS rooms,
         (SELECT coalesce(json_agg(location ORDER BY label), '[]') FROM (
+          -- TODO: Include the location ID here and in the schedule query for stable map links.
           SELECT concat_ws(' | ', venue, level, room) AS label,
                  ARRAY(SELECT room_id FROM location_rooms WHERE location_id = locations.id ORDER BY room_id) AS room_ids
           FROM locations
