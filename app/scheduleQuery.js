@@ -18,6 +18,7 @@ const SCHEDULE_QUERY = `
          l.room,
          l.id AS location_id,
          ARRAY(SELECT room_id FROM session_rooms WHERE session_id = s.id ORDER BY room_id) AS room_ids,
+         ARRAY(SELECT game FROM session_games WHERE session_id = s.id ORDER BY game) AS games,
          s.notes,
          COALESCE(string_agg(sp.name, ', ' ORDER BY sp.name), '') AS speakers
   FROM sessions s

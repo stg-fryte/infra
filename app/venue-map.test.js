@@ -29,7 +29,7 @@ test('Bingo opens at the start instant and closes at the end instant', () => {
 
 test('schedule contains a Bingo link only for live events', () => {
  const ui = require('./ui');
- const event = {id:42,title:'Talk',starts_at:'2026-11-09T16:00:00Z',ends_at:'2026-11-09T17:00:00Z'};
+ const event = {id:42,title:'Talk',starts_at:'2026-11-09T16:00:00Z',ends_at:'2026-11-09T17:00:00Z',games:['bingo']};
  for (const time of ['2026-11-09T15:59:59Z','2026-11-09T17:00:00Z']) {
   const html = ui.scheduleHtml([event],Date.parse(time));
   assert.ok(!html.includes('/bingo/'));
@@ -125,12 +125,18 @@ test('specific offsite venues get encoded provider links; generic offsite does n
 
 test('rendered schedule opens event details without interpreting event titles as HTML', () => {
  const ui = require('./ui');
- const html = ui.scheduleHtml([{id:42,title:'<img src=x onerror=alert(1)>',date:'2026-11-09',start_time:'09:00',end_time:'10:00',starts_at:'2026-11-09T16:00:00Z',ends_at:'2026-11-09T17:00:00Z',venue:'Salt Palace',room:'151'}],Date.parse('2026-11-09T16:00:00Z'));
+ const html = ui.scheduleHtml([{id:42,title:'<img src=x onerror=alert(1)>',date:'2026-11-09',start_time:'09:00',end_time:'10:00',starts_at:'2026-11-09T16:00:00Z',ends_at:'2026-11-09T17:00:00Z',venue:'Salt Palace',room:'151',games:['bingo']}],Date.parse('2026-11-09T16:00:00Z'));
  assert.match(html, /href="\/map\?event=42"/);
  assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
  assert.ok(!html.includes('<img src=x'));
  assert.match(html, /href="\/bingo\/42"/);
  assert.ok(html.includes('session-bingo-action'));
+});
+
+test('rendered schedule hides bingo links for sessions without the bingo game', () => {
+ const html = require('./ui').scheduleHtml([{id:43,title:'Plain talk',date:'2026-11-09',start_time:'09:00',end_time:'10:00',venue:'Salt Palace',room:'151',games:[]}]);
+ assert.ok(!html.includes('/bingo/43'));
+ assert.ok(html.includes('data-save'));
 });
 
 test('room mapping links open the event assignment rather than its shared location', () => {
