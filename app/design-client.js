@@ -56,7 +56,9 @@
   t.addEventListener('keydown', e => {if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]; next.focus(); next.click();});
  });
  input.addEventListener('input', update); track.addEventListener('change', update);
- document.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => {
+ document.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', e => {
+  if(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
   mode = b.dataset.nav;
   if (mode === 'saved') {const first = all.find(r => saved.has(r.dataset.id) && Date.parse(r.dataset.endsAt) > Date.now()); if (first) selectedDay = first.dataset.date;}
   update(); document.querySelector('#sessions').scrollIntoView({behavior:'smooth', block:'start'});
