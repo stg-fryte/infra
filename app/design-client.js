@@ -184,5 +184,6 @@
  document.addEventListener('keydown', e => {if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {e.preventDefault(); input.focus();}});
  update();
  if (input.value.trim() && !es.dead) scheduleSearch();
+ if(new URLSearchParams(location.search).get('view')==='saved') document.querySelector('[data-nav="saved"]').click();
  setInterval(update, 30000);
 })();

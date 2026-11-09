@@ -271,14 +271,14 @@ async function handleBingo(req, res, user, match) {
       if (result.status === 'invalid') return send(res, 400, 'text/plain', 'Invalid square.\n');
       const message = result.status === 'missing' ? 'Start a card before the event ends to play.' :
         match[2] === '/start' ? 'This event has ended. New cards are closed.' : 'Your card is read-only. The correction window has closed.';
-      return send(res, 409, 'text/html; charset=utf-8', resultsUi.messagePage(message, session, { team, version }));
+      return send(res, 409, 'text/html; charset=utf-8', resultsUi.messagePage(message, session, { team, version, user }));
     }
     return send(res, 303, 'text/plain', '', { location: `/bingo/${session.id}` });
   }
   if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
   const card = await bingoStore.loadCard(pool, user.id, session.id);
   return send(res, 200, 'text/html; charset=utf-8', card ? bingoHtml(user, session, card) :
-    resultsUi.startPage(session, { team, version }));
+    resultsUi.startPage(session, { team, version, user }));
 }
 
 const SAVED_PATH = /^\/api\/saved(?:\/(\d{1,9}))?$/;
@@ -331,7 +331,7 @@ async function route(req, res, url) {
   res.setHeader('Cache-Control', 'no-store');
   if (url.pathname === '/healthz') return send(res, 200, 'text/plain', 'ok\n');
   if (url.pathname === '/privacy' && req.method === 'GET') {
-    return send(res, 200, 'text/html; charset=utf-8', resultsUi.privacyPage({ team, version }));
+    return send(res, 200, 'text/html; charset=utf-8', resultsUi.privacyPage({ team, version, user: await currentUser(req) }));
   }
   if (url.pathname === BOOTSTRAP_CSS_URL && req.method === 'GET') {
     return send(res, 200, 'text/css; charset=utf-8', bootstrapCss, { 'cache-control': 'public, max-age=86400' });
@@ -379,7 +379,7 @@ async function route(req, res, url) {
 
   if (url.pathname === '/history') {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
-    return send(res, 200, 'text/html; charset=utf-8', resultsUi.historyPage(await loadSchedule(true), { team, version }));
+    return send(res, 200, 'text/html; charset=utf-8', resultsUi.historyPage(await loadSchedule(true), { team, version, user }));
   }
   const resultMatch = /^\/(api\/sessions\/(\d{1,9})\/buzzwords|sessions\/(\d{1,9})\/results)$/.exec(url.pathname);
   if (resultMatch) {
@@ -388,7 +388,7 @@ async function route(req, res, url) {
     if (!result) return send(res, 404, 'text/plain', 'not found\n');
     if (resultMatch[2]) return send(res, 200, 'application/json', JSON.stringify(result));
     const session = await bingoStore.loadSession(pool, result.id);
-    return send(res, 200, 'text/html; charset=utf-8', resultsUi.resultsPage(result, { team, version, session }));
+    return send(res, 200, 'text/html; charset=utf-8', resultsUi.resultsPage(result, { team, version, session, user }));
   }
 
   if (['/static/venue-map.js', '/static/floor-plans.js'].includes(url.pathname)) {

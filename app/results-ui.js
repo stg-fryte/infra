@@ -1,10 +1,12 @@
-const { page, esc, logo, bingoNotice } = require('./ui');
+const { page, esc, logo, bingoNotice, navigationPage } = require('./ui');
 const { bingoWindow } = require('./bingo');
 
 const mountainTime = value => new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver',
   month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(new Date(value));
 
-function layout(title, content, { team, version }, extraHead = '') {
+function layout(title, content, options, extraHead = '') {
+  const { team, version } = options;
+  if (options.user) return navigationPage(title, content, options, extraHead);
   return page(title, `<div class="results-shell"><header class="results-header"><a class="brand" href="/">${logo}</a>
     <nav class="results-nav" aria-label="Main navigation"><a href="/">Upcoming events</a><a href="/history">Past events</a><a href="/privacy">Privacy</a></nav></header>
     <main><div class="mini-label">THE WORDS THAT BROUGHT US TOGETHER</div><h1>${esc(title)}</h1>${content}</main>
