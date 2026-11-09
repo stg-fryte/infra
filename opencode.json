@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "radar-cloud": {
+        "type": "remote",
+        "url": "https://api.radarhq.io/mcp"
+      }
+    }
+  }
+}
