@@ -40,6 +40,7 @@ function createObservability({ env = process.env, instanceId = env.POD_UID || ra
     resource: resourceFromAttributes({ 'service.name': 'kube-companion', 'service.version': env.APP_VERSION || 'dev',
       'service.instance.id': instanceId, 'k8s.namespace.name': 'team-stg-fryte' }),
     views: [{ instrumentName: 'bingo_word_*', aggregationCardinalityLimit: 20000 },
+      { instrumentName: 'bingo_demo_word_*', aggregationCardinalityLimit: 20000 },
       { instrumentName: '*_duration', aggregation: { type: AggregationType.EXPLICIT_BUCKET_HISTOGRAM,
         options: { boundaries: [0.005,0.01,0.025,0.05,0.1,0.25,0.5,1,2.5,5,10] } } }],
   });
@@ -48,24 +49,32 @@ function createObservability({ env = process.env, instanceId = env.POD_UID || ra
   const duration = meter.createHistogram('http_server_request_duration', { unit: 's' });
   const dbDuration = meter.createHistogram('db_query_duration', { unit: 's' });
   let snapshot = [], updatedAt = 0;
+  const demoSnapshots = new Map();
   const fresh = () => updatedAt > 0 && Date.now()-updatedAt < 60000;
   meter.createObservableGauge('bingo_aggregate_fresh').addCallback(result => result.observe(fresh() ? 1 : 0));
   meter.createObservableGauge('bingo_aggregate_updated_timestamp_seconds').addCallback(result => result.observe(updatedAt/1000));
-  for (const [name, field] of [['bingo_participants','participants'],['bingo_results_final','final']]) {
-    meter.createObservableGauge(name).addCallback(result => {
-      for (const event of snapshot) result.observe(fresh() ? Number(event[field]) : NaN, { session_id: String(event.id) });
+  for (const [prefix, events] of [['bingo_',()=>snapshot],['bingo_demo_',()=>demoSnapshots.values()]]) {
+  for (const [name, field] of [['participants','participants'],['results_final','final']]) {
+    meter.createObservableGauge(prefix+name).addCallback(result => {
+      for (const event of events()) result.observe(fresh() && event.active !== false ? Number(event[field]) : NaN, { session_id: String(event.id) });
     });
   }
-  for (const [name,field] of [['bingo_word_reported','reported'],['bingo_word_shown','shown']]) {
-    meter.createObservableGauge(name).addCallback(result => {
-      for (const event of snapshot) for (const word of event.words) {
+  for (const [name,field] of [['word_reported','reported'],['word_shown','shown']]) {
+    meter.createObservableGauge(prefix+name).addCallback(result => {
+      for (const event of events()) for (const word of event.words) {
         // Unshown candidates remain in the application JSON; no empty series per candidate.
-        if (word.shown > 0) result.observe(fresh() ? word[field] : NaN, { session_id: String(event.id), word: word.key });
+        if (word.shown > 0) result.observe(fresh() && event.active !== false ? word[field] : NaN, { session_id: String(event.id), word: word.key });
       }
     });
   }
+  }
   return { provider, prometheus,
     updateResults(results, at = Date.now()) { snapshot = results; updatedAt = at; },
+    updateDemoResults(results) {
+      // Explicitly retire removed series: the cumulative SDK retains omitted gauges.
+      for (const event of demoSnapshots.values()) event.active=false;
+      for (const event of results) demoSnapshots.set(event.id,{...event,active:true});
+    },
     recordRequest(method, path, status, seconds) {
       const labels = { method: ['GET','POST','PUT','DELETE','HEAD','OPTIONS','PATCH'].includes(method) ? method : 'OTHER',
         route: routeLabel(path), status: String(status) };

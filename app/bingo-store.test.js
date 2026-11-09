@@ -110,9 +110,11 @@ test('Postgres enforces bingo deadlines and aggregates distinct current reports'
     const { createHash } = require('node:crypto');
     const { setTimeout: delay } = require('node:timers/promises');
     const token = 'local-integration-session';
+    const {rows:[pastDay]}=await pool.query(`INSERT INTO days(event_date,label) VALUES(current_date-1,'Past test') ON CONFLICT(event_date) DO UPDATE SET label=EXCLUDED.label RETURNING id`);
+    const {rows:[demoSession]}=await pool.query(`INSERT INTO sessions(day_id,start_time,end_time,title,format,location_id) VALUES($1,'10:00','11:00','Demo database isolation','Talk',1) RETURNING id`,[pastDay.id]);
     await pool.query(`INSERT INTO user_sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')`,
       [createHash('sha256').update(token).digest(),user]);
-    const child = spawn(process.execPath,['server.js'],{cwd:__dirname,env:{...process.env,DATABASE_URL:url.toString(),PORT:'55440',METRICS_PORT:'55441',OTEL_EXPORTER_OTLP_ENDPOINT:''},stdio:['ignore','pipe','pipe']});
+    const child = spawn(process.execPath,['server.js'],{cwd:__dirname,env:{...process.env,DATABASE_URL:url.toString(),PORT:'55440',METRICS_PORT:'55441',OTEL_EXPORTER_OTLP_ENDPOINT:'',BINGO_DEMO_RESULTS:'true'},stdio:['ignore','pipe','pipe']});
     t.after(async()=>{if(child.exitCode === null){child.kill(); await once(child,'exit');}});
     let logs=''; child.stdout.on('data',data=>{logs+=data;}); child.stderr.on('data',data=>{logs+=data;});
     const base = 'http://127.0.0.1:55440';
@@ -125,11 +127,19 @@ test('Postgres enforces bingo deadlines and aggregates distinct current reports'
     const request=(route,options={})=>fetch(base+route,{redirect:'manual',...options,headers:{cookie:`sid=${token}`,...options.headers}});
     assert.equal((await fetch(base+`/api/sessions/${session.id}/buzzwords`)).status,401);
     const history = await request('/history'); assert.equal(history.status,200);
-    assert.match(await history.text(),/Kubernetes testing/);
+    const historyHtml=await history.text();
+    assert.match(historyHtml,/Kubernetes testing/);
+    assert.doesNotMatch(historyHtml,/Registration \+ Badge Pick-Up|Coffee Break|Coat \+ Bag Check/);
     const before = (await pool.query('SELECT count(*) AS count FROM bingo_cards')).rows[0].count;
     assert.equal((await request(`/sessions/${session.id}/results`)).status,200);
     const result = await (await request(`/api/sessions/${session.id}/buzzwords`)).json();
     assert.equal(result.final,true); assert.equal(result.participants,2);
+    assert.equal(result.source,'attendee');
+    const demo=await (await request(`/api/sessions/${demoSession.id}/buzzwords`)).json();
+    assert.equal(demo.source,'synthetic');assert.ok(demo.participants>0);
+    assert.match(await (await request(`/sessions/${demoSession.id}/results`)).text(),/Synthetic demo data/);
+    assert.match(await (await request(`/bingo/${demoSession.id}`)).text(),/New cards are closed/);
+    assert.equal(await store.loadCard(pool,user,demoSession.id),null);
     assert.equal((await pool.query('SELECT count(*) AS count FROM bingo_cards')).rows[0].count,before);
     const card = await request(`/bingo/${session.id}`); assert.match(await card.text(),/Results are final/);
     assert.equal((await request(`/bingo/${session.id}/mark`,{method:'POST',body:new URLSearchParams({cell:'0',checked:'false'})})).status,409);
