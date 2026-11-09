@@ -35,8 +35,7 @@
  function selectDestination(view, destination, direct = false) {
   if (destination.kind !== 'indoor') return {...view, mode: destination.kind};
   const first = destination.rooms[0];
-  const sameFloor = destination.rooms.every(r => r.venue === view.venue && r.floor === Number(view.floor));
-  return {mode: direct || sameFloor ? 'top-down' : 'floors', venue: first.venue, floor: first.floor};
+  return {mode: direct ? 'top-down' : 'floors', venue: first.venue, floor: first.floor};
  }
  function mount(data) {
   data.events = data.events.filter(event=>isUpcoming(event));
@@ -72,7 +71,8 @@
   function setContext(venue, floor, overview = false) {
    venuePicker.value = venue;
    floorPicker.replaceChildren(...plans.floors(venue).map(n=>new Option(`Level ${n}`,n)));
-   floorPicker.value = floor;
+   if (overview) floorPicker.prepend(new Option('Choose a floor',''));
+   floorPicker.value = overview ? '' : floor;
    byId('map-context-venue').textContent = venue;
    byId('map-context-floor').textContent = overview ? 'Floor overview' : `Level ${floor}`;
    byId('map-venue-heading').textContent = venue;
@@ -122,6 +122,7 @@
    status.textContent = missing ? 'Some rooms do not have a drawing position yet.' : otherFloor ? 'Your selected event is on another floor. Use Show event location to return.' : rooms.length ? `${rooms.map(r=>r.name).join(', ')} highlighted · Level ${floor}` : 'Choose an event to highlight its room.';
   }
   function showStack(venue) {
+   if (!root.FloorPlans) return showUnavailable('The floor drawings could not load. Refresh to try again; your event details are still available.');
    clearSurface();
    stack.hidden = false;
    setContext(venue, destination.rooms.find(r=>r.venue===venue)?.floor || plans.floors(venue)[0], true);
@@ -190,7 +191,8 @@
    showDetails(selectedEvent);
    destination = resolveDestination(selectedEvent?.location_id,data);
    eventPicker.value = selectedEvent?.id || '';
-   displayDestination();
+   if (!id) {showStack(view.venue); byId('show-destination').hidden = true;}
+   else displayDestination();
    if (id && !selectedEvent) {detail.replaceChildren(create('h2','Event not found'),create('p','Choose an event from the list to continue.'));}
    if (updateUrl) {
     const url = new URL(location.href); url.searchParams.delete('location');
@@ -209,8 +211,8 @@
    }
   }, 30000);
   eventPicker.addEventListener('change',()=>selectEvent(eventPicker.value));
-  venuePicker.addEventListener('change',()=>showFloor(venuePicker.value,plans.floors(venuePicker.value)[0],false));
-  floorPicker.addEventListener('change',()=>showFloor(venuePicker.value,Number(floorPicker.value)));
+  venuePicker.addEventListener('change',()=>showStack(venuePicker.value));
+  floorPicker.addEventListener('change',()=>{if (floorPicker.value) showFloor(venuePicker.value,Number(floorPicker.value));});
   byId('floor-overview').addEventListener('click',()=>showStack(venuePicker.value));
   byId('show-destination').addEventListener('click',()=>displayDestination());
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(()=>{if (map && !mapElement.hidden) map.invalidateSize();}).observe(mapElement);
@@ -221,7 +223,7 @@
    destination = resolveDestination(params.get('location'),data);
    detail.append(create('h2',destination.location?.label || 'Location unavailable'));
    displayDestination(true);
-  } else {showDetails(null); showFloor(view.venue,view.floor,false);}
+  } else {showDetails(null); showStack(view.venue);}
  }
  const api = {resolveDestination, selectDestination, mapLinks, offsitePreview, isUpcoming, mount};
  if (typeof module !== 'undefined' && module.exports) module.exports = api;

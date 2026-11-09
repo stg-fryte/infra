@@ -45,10 +45,10 @@ test('PDF coordinates place upper-floor rooms on their own drawing', () => {
  assert.deepEqual(points, [[50,446],[363,909]]);
 });
 
-test('same floor highlights directly and preserves all mapped rooms', () => {
+test('event selection opens the interactive floor overview, even on the current floor', () => {
  const destination = resolveDestination(2, data);
  assert.deepEqual(destination.rooms.map(r => r.id), [2, 4]);
- assert.equal(selectDestination(current, destination).mode, 'top-down');
+ assert.equal(selectDestination(current, destination).mode, 'floors');
 });
 test('another floor or venue opens the floor stack without mutating current view', () => {
  assert.equal(selectDestination(current, resolveDestination(1, data)).mode, 'floors');

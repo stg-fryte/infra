@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking.
 
-**Goal:** Open events in main's themed map workbench with details and selected-room highlights, using a tilted floor stack only when the viewed floor differs.
+**Goal:** Open events in main's themed map workbench with details and selected-room highlights, using a tilted floor stack by default and top-down PDF plans after a floor click.
 
 **Architecture:** Server supplies schedule, locations and room mappings to the existing workbench. A shared browser/Node module resolves destination state; a floor registry supplies PDF image crops and image-coordinate polygons used by Leaflet and the stacked view.
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - PDF imagery stays visible; only selected-room overlays render.
-- Floor identity includes venue. Compare against last top-down floor, not physical position.
+- Floor identity includes venue. Every event selection opens the overview; a floor click opens top-down. Never infer physical position.
 - Retain themed map placement, schedule filters/bookmarks/bingo, authentication and location links.
 - Generic off-site and unmapped indoor locations have explicit unavailable states.
 - User additions: verified OSM previews before off-site links; hide ended events using America/Denver end instants, retaining data and checking open views every 30 seconds.
