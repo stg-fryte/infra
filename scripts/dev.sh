@@ -48,6 +48,11 @@ if [[ ! -d node_modules ]]; then
   npm install --no-audit --no-fund
 fi
 
+if [[ "${1:-}" == "--rollback" ]]; then
+  DATABASE_URL="postgres://postgres:pw@localhost:${PG_PORT}/app" node rollback.js "${2:-1}"
+  exit 0
+fi
+
 echo "app on http://localhost:${APP_PORT} (restarts on file changes; ctrl-c stops the app and the database)"
 DATABASE_URL="postgres://postgres:pw@localhost:${PG_PORT}/app" \
   PORT="$APP_PORT" \
