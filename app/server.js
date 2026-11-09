@@ -40,6 +40,7 @@ const SCHEDULE_QUERY = `
          l.venue,
          l.level AS floor,
          l.room,
+         l.id AS location_id,
          s.notes,
          COALESCE(string_agg(sp.name, ', ' ORDER BY sp.name), '') AS speakers
   FROM sessions s
@@ -73,7 +74,7 @@ function scheduleHtml(schedule) {
           const speakers = s.speakers ? `<div class="small text-body-secondary">${escapeHtml(s.speakers)}</div>` : '';
           const notes = s.notes ? `<span class="badge text-bg-warning ms-1">${escapeHtml(s.notes)}</span>` : '';
           return `<tr><td class="text-nowrap">${escapeHtml(s.start_time)}&ndash;${escapeHtml(s.end_time)}</td>
-<td><div>${escapeHtml(s.title)}${notes} <a class="small ms-1" href="/bingo/${s.id}" target="_blank" rel="noopener">Buzzword Bingo</a></div><div class="small text-body-secondary">${meta}</div>${speakers}</td>
+<td><div><a href="/map?location=${s.location_id}">${escapeHtml(s.title)}</a>${notes} <a class="small ms-1" href="/bingo/${s.id}" target="_blank" rel="noopener">Buzzword Bingo</a></div><div class="small text-body-secondary">${meta}</div>${speakers}</td>
 <td class="small">${escapeHtml(locationLabel(s))}</td></tr>`;
         })
         .join('');
@@ -395,7 +396,7 @@ async function route(req, res, url) {
       SELECT
         (SELECT coalesce(json_agg(rooms ORDER BY id), '[]') FROM rooms) AS rooms,
         (SELECT coalesce(json_agg(location ORDER BY label), '[]') FROM (
-          SELECT concat_ws(' | ', venue, level, room) AS label,
+          SELECT id, concat_ws(' | ', venue, level, room) AS label,
                  ARRAY(SELECT room_id FROM location_rooms WHERE location_id = locations.id ORDER BY room_id) AS room_ids
           FROM locations
         ) location) AS locations

@@ -152,9 +152,9 @@ const locationPicker=document.getElementById('schedule-location');
 const locationStatus=document.getElementById('location-status');
 const venuePicker=document.getElementById('venue');
 const hotelFloorPicker=document.getElementById('hyatt-floor');
-mapData.locations.forEach((location,index)=>locationPicker.add(new Option(location.label,index)));
+mapData.locations.forEach(location=>locationPicker.add(new Option(location.label,location.id)));
 locationPicker.onchange=()=>{
- const location=locationPicker.value==='' ? undefined : mapData.locations[Number(locationPicker.value)];
+ const location=mapData.locations.find(location=>String(location.id)===locationPicker.value);
  mappedRoomIds=new Set(location?.room_ids);
  const matched=mapData.rooms.filter(room=>mappedRoomIds.has(room.id));
  locationStatus.textContent=matched.length ? matched.map(room=>room.name).join(', ') :
@@ -173,4 +173,13 @@ locationPicker.onchange=()=>{
   if(bounds.isValid()) map.fitBounds(bounds.pad(.5),{maxZoom:21});
  }
 };
+const initialLocation=new URLSearchParams(window.location.search).get('location');
+if(initialLocation && mapData.locations.some(location=>String(location.id)===initialLocation)){
+ locationPicker.value=initialLocation;
+ locationPicker.onchange();
+ if(mappedRoomIds.size && window.matchMedia('(max-width: 650px)').matches){
+  const mapId=venuePicker.value==='Hyatt Regency' ? 'hyatt-map' : 'map';
+  document.getElementById(mapId).scrollIntoView();
+ }
+}
 </script></body></html>
