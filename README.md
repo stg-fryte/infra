@@ -1,249 +1,294 @@
-# Radar AI SRE track starter: Cloud Native Hackathon
+# Kube Companion — KubeCon NA 2026 (team `stg-fryte`)
 
-Start here if your team has its own cluster at the hackathon: a virtual Kubernetes cluster (vcluster) where you're cluster-admin. You get a small app that `git push` deploys through Argo CD, and notes your coding agent reads so it ships through [Radar](https://radarhq.io)'s MCP server. Below is a menu of what Radar can do: pick what your project needs..
+A companion web app for KubeCon NA 2026 (Las Vegas, Nov 8–12, Salt Palace), built
+on the Radar AI SRE hackathon starter. It runs as a GitOps-deployed Node service in
+the team's hackathon cluster, with PostgreSQL as the system of record and optional
+Elasticsearch-backed search.
 
-## The day
+Features (see `app/`, `docs/superpowers/` for the design specs behind each):
 
-- 11:00: before you write any code, get your cluster, open it in Radar Cloud, and connect your agent to Radar (steps below).
-- First hour: open **Checks** for your cluster and take a screenshot. That's your "before".
-- All day, work through Radar: your agent pushes, syncs and waits for each rollout through Radar's MCP. When something breaks, look in Radar first, and start an AI investigation on anything you can't explain. Run at least one investigation today (the judges look for it). Nothing broke? Investigate your app after a release: it ends with an all-clear and the evidence, which counts.
-- By 5:30: tell the day's story from Radar: the timeline, the investigation, and Checks before and after. It's only there if you used Radar all day. Your agent can draft it: ask it for your 5:30 story.
-- The winning team gets $4,000. Hackathon clusters and access to the hackathon org end on Friday, November 13.
+- **Schedule browser** — the conference schedule by day (data loaded from
+  `KubeCon_NA_2026_Schedule.csv` via the SQL migrations in `app/migrations/`),
+  with search and filters.
+- **Venue map** — interactive Salt Palace floor plans (`/map`, Leaflet + PDF plan
+  crops in `app/floor-plans.js`); sessions deep-link to their rooms.
+- **Buzzword Bingo** — signed-in attendees create and mark bingo cards per
+  session; new cards close at the scheduled end time (America/Denver), existing
+  cards stay correctable for exactly ten minutes.
+- **Past events & results** — `/history`, per-session word clouds and exact
+  expected/reported/shown counts (`/sessions/:id/results`,
+  `/api/sessions/:id/buzzwords`). Aggregate-only, no per-person data exported.
+- **Accounts** — username/password sign-in (scrypt-hashed), 7-day sessions,
+  profiles, saved sessions, session preferences. `/privacy` explains what is
+  stored and how to export.
+- **Session search** — Elasticsearch (Elastic Cloud Serverless) full-text search
+  and title suggestions; falls back to a client-side substring filter when no ES
+  credentials are configured (search endpoints answer 503).
+- **Observability** — OpenTelemetry metrics on a separate pod port 9464
+  (Prometheus scrape annotations on the Deployment), optional OTLP export to
+  Dash0, and `dash0-dashboard.json` (import instructions in
+  `docs/observability/README.md`). `BINGO_DEMO_RESULTS=true` (set in
+  `deploy/deployment.yaml`) adds visibly-labeled synthetic aggregate samples for
+  past events that have no real attendee cards.
 
-## Before you start
+## Repository layout
 
-Get your team's cluster at **join.cnh.radarhq.io** (the join code is shared at the kickoff and on the Radar table). It takes 3 to 4 minutes; `join.cnh.radarhq.io/status/<team-name>` shows the progress and says when it's ready. Then you have:
+| Path | What it is |
+|---|---|
+| `app/` | Node 22 HTTP app: `server.js` entrypoint, UI, `migrations/` (Postgres, auto-applied), `ingest-schedule.js` (Postgres → Elasticsearch), `rollback.js` (migration rollback), tests |
+| `deploy/` | Kubernetes manifests Argo CD deploys: `deployment.yaml`, `service.yaml`, `httproute.yaml`, `database.yaml` (CloudNativePG `Cluster`), `kustomization.yaml` |
+| `argocd/` | `application.yaml` (hackathon cluster) and `application-byo.yaml` (bring-your-own cluster) |
+| `.github/` | `workflows/deploy.yaml` (build-and-deploy), `workflows/es-ingest.yaml` (manual ES sync), `jobs/es-ingest.yaml` (in-cluster one-off Job template) |
+| `scripts/` | `setup.sh` (point a fresh template clone at a team), `dev.sh` (local dev), `local-cluster.sh` (laptop k3d/kind/minikube cluster) |
+| `examples/` | Optional add-ons: `postgres/`, `hpa/`, `canary/`, plus `agent-workflows/` (credentials, one-off Jobs, hosted AI investigations) |
+| `docs/` | `observability/` (telemetry & Dash0 dashboard), `superpowers/` (plans and design specs for the shipped features) |
+| `.agents/skills/` | Agent procedures: `get-started`, `ship`, `debug-failure`, `canary-release`, `demo-story`; `elasticsearch-onboarding` is pinned from `elastic/agent-skills` (`skills-lock.json`). `.claude/skills` links here. |
+| `AGENTS.md` | Notes the coding agent reads; `CLAUDE.md` points at it; `opencode.json` configures the `radar-cloud` MCP server for OpenCode |
 
-- your own cluster, named `<team-name>` in Radar Cloud,
-- this starter app already running in it, in namespace `team-<team-name>`, at `https://<team-name>.cnh.radarhq.io`,
-- an invite for each of you to the hackathon's organization in Radar Cloud. Accept it and sign in at [app.radarhq.io](https://app.radarhq.io).
+## Prerequisites
 
-**Joining a team that already started?** Don't fill in the join form or copy the template again: ask your team for the repo, and ask us at the Radar table to add your email.
+- **Cluster access** — the team's hackathon vcluster, named exactly `stg-fryte`
+  in Radar Cloud; the app runs in namespace `team-stg-fryte` and the public URL
+  is `https://stg-fryte.cnh.radarhq.io` (routed by the platform to Service
+  `app`, port 80).
+- **A coding agent with the Radar MCP server** — `radar-cloud` at
+  `https://api.radarhq.io/mcp`. OpenCode: already configured in `opencode.json`.
+  Claude Code: `claude mcp add --scope user radar-cloud --transport http
+  https://api.radarhq.io/mcp`, then `/mcp` > radar-cloud > **Authenticate**
+  (choose **Cloud Native Hackathon** under "Organization access").
+- **Node 22 and Docker** for local development; `gh` (GitHub CLI) and
+  `yq` for watching builds.
+- **Radar Cloud sign-in** with the email the team listed when it joined.
 
-Every team is in the same Radar Cloud organization, so Radar Cloud lists every team's cluster, each under its team's name, plus a cluster named `cnh`, the platform's own cluster. You only have access to your own team's cluster. The member list (with emails), the Alerts page and the bell (each alert's resource, namespace and status), and any investigation you mark **Shared** are visible to every team. Investigations start private: only the person who started one can open it. So that person shows it at 5:30, or shares it on purpose, and then every team can read it. Alert notifications are off for the event, because they would go to everyone.
+Every Radar MCP call must pass the cluster id: call `list_clusters` once, take
+the `id` of the entry whose `name` is exactly `stg-fryte`, and pass it as
+`cluster` on every other call. Pass `namespace: team-stg-fryte` where a
+namespace is taken.
 
-## Connect your agent
+## First-time cluster setup
 
-For Claude Code, run this once, from any folder:
+This clone is already pointed at team `stg-fryte` (namespace in
+`deploy/kustomization.yaml`, repo URL in `argocd/application.yaml`, image
+`ghcr.io/stg-fryte/infra`). A fresh clone of the template instead runs:
 
 ```bash
-claude mcp add --scope user radar-cloud --transport http https://api.radarhq.io/mcp
+./scripts/setup.sh <team-name>     # replaces __TEAM__, OWNER/REPO and ghcr.io/OWNER/REPO
+git commit -am "Set up team <team-name>" && git pull --rebase && git push
 ```
 
-Then, in Claude Code, run `/mcp`, pick **radar-cloud** and **Authenticate**: it opens your browser. Under "Organization access", pick **Cloud Native Hackathon**. Another agent? In Radar Cloud, open **Agents** and pick yours.
+Then, once (details in the `get-started` skill):
 
-Start your agent in your copy of this repo (below) and give it a first prompt:
+1. Wait for the `build-and-deploy` Action to go green (repo **Actions** tab) and
+   make sure the GHCR image is **Public** (repo **Packages** > Package settings).
+2. Apply `argocd/application.yaml` to the cluster through Radar's `apply_resource`
+   (or from Radar Cloud). It creates the Argo CD Application `app` in
+   `team-stg-fryte` (project `team-stg-fryte`), which auto-syncs `deploy/` from
+   `main` with prune and self-heal.
+3. Verify: `https://stg-fryte.cnh.radarhq.io` answers and its `version` field
+   matches the first 7 characters of a commit in this repo.
 
-> Get me set up for the hackathon. Our team is <team-name>.
+Bring-your-own cluster instead? Use `argocd/application-byo.yaml` (Application
+`app-stg-fryte` in `argocd`, project `default`, `CreateNamespace=true`), remove
+`httproute.yaml` from `deploy/kustomization.yaml`, and read `scripts/local-cluster.sh`
+(k3d by default; `kind`/`minikube` via `CNH_CLUSTER_TOOL`; `--pull` to pre-fetch
+charts, `--images` to list them, `--down` to delete).
 
-Every Radar MCP tool takes a `cluster` id, and your agent must pass yours on every call: the organization has about 40 clusters. AGENTS.md tells it how to find the id and how to ship.
+## Local development
 
-This repo also has skills for getting set up, shipping, debugging, canaries and the 5:30 story in `.agents/skills/`. Claude Code and Codex pick them up on their own.
+```bash
+./scripts/dev.sh
+```
 
-## Ship your own code
+- Starts a throwaway Postgres 17 container (`fryte-dev-pg`, data in Docker
+  volume `fryte-dev-pgdata`, bound to `127.0.0.1:54320`, db `app`, user
+  `postgres`/`pw`), installs `app/node_modules` if missing, then runs
+  `node --watch server.js` on port 8080 (override with `PORT`). Ctrl-C stops the
+  app and the database.
+- `./scripts/dev.sh --reset` wipes the dev database.
+- `./scripts/dev.sh --rollback [steps]` rolls the dev schema back N migrations
+  (default 1).
+- Elasticsearch and Dash0 are optional locally: without `ES_URL`/`ES_API_KEY`
+  the app uses the client-side search fallback, and without the Dash0 env vars
+  metrics still go to the Prometheus exporter.
 
-1. **Make your copy.** Click **Use this template** > **Create a new repository**. Make it **public**, because Argo CD in your cluster reads it without credentials. Clone it.
-2. **Point it at your team.**
-   ```bash
-   ./scripts/setup.sh <team-name>
-   git commit -am "Set up team <team-name>" && git pull --rebase && git push
-   ```
-   The `git pull` picks up a commit the Action may already have made when GitHub created your repo. The Action builds the image and pushes it to GHCR. Wait for it to go green (the repo's **Actions** tab).
-3. **Check the image is public.** On your repo's GitHub page, open **Packages** (right-hand column) and your image: it should say **Public**, and usually already does. If it says **Private**, open **Package settings** > **Change visibility** > **Public**, because your cluster can't pull a private image.
-4. **Start GitOps.** Ask your agent to apply `argocd/application.yaml` to your cluster through Radar's MCP server. Argo CD takes over the starter app and from then on deploys every push to `main`.
-5. **Check it's yours.** Open `https://<team-name>.cnh.radarhq.io`. It shows `version` and the first 7 characters of the commit you pushed: the Action tags the image with it. The bot's `deploy:` commit after yours has its own SHA; ignore that one.
+Environment variables the app reads (in the cluster they come from
+`deploy/deployment.yaml`):
 
-One person can do this while the others accept their invites.
-
-## API keys and other secrets
-
-Your repo and your image are public, so an API key for a hosted AI model, or any other secret, must never be in either. Keep it in a Kubernetes Secret in your cluster, and give it to your app as an environment variable:
-
-1. **Create the Secret.** In Radar Cloud, open your cluster, then **Resources** > **Secrets** (under Configuration), and click **+** (Create Secret). In the YAML it shows, set `name: app-credentials` and `namespace: team-<team-name>`, replace `key: value` under `stringData` with `api-key: <your key>`, and click **Apply**. Or, with [kubectl](#kubectl):
-   ```bash
-   read -rs API_KEY   # paste the key, then press Enter
-   kubectl -n team-<team-name> create secret generic app-credentials --from-literal=api-key="$API_KEY"
-   ```
-   Create it yourself rather than giving the key to your agent: whatever you paste into a chat stays in its history.
-2. **Read it in your app.** Add this to the `env:` list of the container in `deploy/deployment.yaml`, then push. Only the Secret's name goes in git, never the key:
-   ```yaml
-   - name: API_KEY
-     valueFrom:
-       secretKeyRef:
-         name: app-credentials
-         key: api-key
-   ```
-   If you change the key later, restart the app so it reads the new value.
-
-Argo CD leaves this Secret alone, even with `prune: true`: it only prunes what it deployed from git. Never put a key in the code, the Dockerfile, a build argument or a commit, and don't log it. If one does reach GitHub or your image, revoke it with the provider and make a new one. Your agent's recipe for this, plus one-off Jobs, dependencies and checking the running app, is in [`examples/agent-workflows`](examples/agent-workflows/README.md).
-
-## What Radar can do for you
-
-Pick what your project needs. None of it is required, and more doesn't score higher.
-
-| You want to | In Radar Cloud | Or ask your agent |
+| Variable | Source in cluster | Required? |
 |---|---|---|
-| See what's running and how it connects | Topology, Resources | "Show me what our app talks to and depends on." |
-| Ship every push and know it worked | GitOps, the Application's page | "Ship this, and tell me when it's healthy and live." |
-| Find what's broken right now | Issues, the workload's Timeline and Logs | "What's unhealthy in our cluster, and why?" |
-| See what changed | Timeline, with diffs | "What changed in the last hour?" |
-| Trace a failure to its cause | **Investigate** on the failing resource | Request a hosted investigation when available; otherwise start it in Radar Cloud. |
-| Check health and security | Checks | "Review Checks for our namespace and fix what applies." |
-| See load and resource use over time | The workload's Metrics tab | "Is our memory climbing? Are our requests sized right?" |
-| Add a database | Helm, Resources | "Create a small Postgres for us" (`examples/postgres`). |
-| Restart, scale or run a job | The workload's page | "Restart the app." "Run the cronjob now." |
-| Release carefully, or autoscale | The Rollout's page: Promote, Abort | "Switch us to canary releases" (`examples/canary`), or "Add autoscaling" (`examples/hpa`). |
+| `DATABASE_URL` | Secret `db-app`, key `uri` (created by the CloudNativePG operator) | yes — the server exits without it |
+| `ES_URL`, `ES_API_KEY` | Secret `es-credentials`, keys `url` and `key` | no — search falls back to client-side |
+| `BINGO_DEMO_RESULTS` | `"true"` in `deploy/deployment.yaml` | no — enables synthetic past-event result samples |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` | Secret `dash0-telemetry`, keys `endpoint`, `headers` | no — OTLP export to Dash0 only |
+| `PORT`, `TEAM_NAME`, `APP_VERSION` | 8080 / `stg-fryte` / Docker build arg (commit short SHA) | — |
 
-**Going further:** Radar also understands OpenTelemetry, Sealed Secrets, Argo Workflows and Argo Rollouts analysis, among others. You're cluster-admin, so install what your project needs (see [Your cluster](#your-cluster)).
-
-For credentials, one-off Jobs, dependencies and checking the running app, see [the optional agent workflows](examples/agent-workflows/README.md).
-
-Replace `app/` with your own project whenever you like. Keep it listening on `$PORT` (8080) with `/healthz` and `/readyz`, or update the probes in `deploy/`. The Dockerfile installs the dependencies in `app/package.json`; for another language, change the Dockerfile too.
-
-## What the judges look for
-
-1. Run your project on Kubernetes with Radar connected, in the cluster we provide your team or on a cluster you bring.
-2. Use Radar's UI and MCP throughout building and operating your project. Show how Radar helped you ship, troubleshoot, or improve your app.
-3. Use Radar's AI investigations to investigate a real issue or question about your running app. Show what you learned and what you did with the findings.
-4. Build something that makes conferences easier.
-
-One real decision Radar helped you make is enough. More features don't score higher, and don't break things on purpose for the demo. Official wording: [hackathon page](https://www.wemakedevs.org/hackathons/cnh).
-
-## Your cluster
-
-Already installed: Argo CD in namespace `argocd`, Argo Rollouts, the Gateway API CRDs, metrics for `kubectl top` and the HPA, Prometheus in namespace `monitoring`, the CloudNativePG operator in `cnpg-system`, and Radar in `radar` (don't upgrade it). Argo CD has no web UI here: see and sync your Applications in Radar Cloud, or through your agent. It picks up Applications in `team-*` namespaces, and your Argo CD project is `team-<team-name>`.
-
-**Metrics history.** Prometheus (`monitoring/prometheus-server`) scrapes your pods' CPU, memory and network, the kubelet, kube-state-metrics, and any pod or Service annotated `prometheus.io/scrape: "true"` (plus `prometheus.io/port` and `prometheus.io/path` if it isn't `/metrics`), every 30 seconds, and keeps 7 days. Radar finds it on its own: workloads get metric charts in Radar Cloud, and your agent can call `discover_metrics` to see what's there and `query_prometheus` to run PromQL. It doesn't count against your budget. It sees only your cluster. There's no node-exporter (the host refuses it) and no Alertmanager.
-
-**Postgres.** The CloudNativePG operator is already running, so a database is one `Cluster`. Keep it in git next to your app so Argo CD applies it, or have your agent apply it with Radar's `apply_resource`:
-
-```yaml
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
-metadata:
-  name: db
-  namespace: team-<team-name>
-spec:
-  instances: 1
-  storage:
-    size: 1Gi
-```
-
-It's ready in about a minute. Your app connects to `db-rw:5432`; the user, password and a full `uri` are in Secret `db-app`. Each instance is a pod and a PVC from your budget. `examples/postgres` has a version with requests and limits set, and the steps to wire it into your app.
-
-**Your URL.** The platform routes `https://<team-name>.cnh.radarhq.io` to Service `app`, port 80, in namespace `team-<team-name>`. Keep a Service by that name and port there, whatever runs behind it. You can't get other hostnames, and Services of type LoadBalancer or NodePort aren't available. The HTTPRoute in `deploy/` does nothing inside your cluster (there's no Gateway in it), and Argo CD counts it healthy, so leave it.
-
-**Install what you need.** You're cluster-admin, so CRDs, operators, Helm charts and more namespaces are all fine. For example, with [kubectl access](#kubectl), NATS for messaging:
+### Tests
 
 ```bash
-helm repo add nats https://nats-io.github.io/k8s/helm/charts/
-helm repo update nats
-helm search repo nats/nats --versions
-# Choose an exact version from the results, then replace CHART_VERSION below.
-helm upgrade --install nats nats/nats --version CHART_VERSION --namespace nats --create-namespace
+cd app && npm test
 ```
 
-Or ask your agent to apply an operator's manifest with Radar's `apply_resource`, or to keep it in git as another Argo CD Application in `team-<team-name>`: your project `team-<team-name>` takes any source repo, any namespace in your cluster, and cluster-scoped resources.
+Runs `node --test *.test.js`. For the full database/HTTP suite, set
+`TEST_DATABASE_URL` to a **disposable** local Postgres admin connection — the
+suite creates and removes its own temporary database; never point it at the
+conference database.
 
-**What the host refuses.** Privileged pods, and pods that use hostPath, hostNetwork or hostPID. Such a pod stays `Pending`, and its reason is a Warning event `SyncError` on the pod: you see it in Radar's events, and your agent through `get_events` or `diagnose`. Charts for node agents (log collectors, node exporters, storage drivers) often ask for these; turn that part off or pick another chart.
+### Database schema
 
-**Budget.** One total for everything you run, in any namespace, including what you install: 2 CPU and 4 GiB of requests, 4 CPU and 8 GiB of limits, and 4 PVCs with 20 GiB of storage (the default StorageClass is gp3). Containers without their own requests and limits get 100m CPU / 128Mi of requests and 500m / 512Mi of limits, so charts that set none still run. A pod that would go over stays `Pending` with a `SyncError` event that says `exceeded quota: team-quota`.
+Postgres is the system of record. Migrations in `app/migrations/`
+(`NNN_name.sql`, optional `NNN_name.down.sql`) are applied automatically at
+server start under a Postgres advisory lock, tracked in `schema_migrations`.
+The server retries the database for up to ~60 s on boot (it waits while the
+CloudNativePG Cluster is coming up). To roll back in the cluster, run
+`node rollback.js [steps]` as a one-off Job (pattern in
+`examples/agent-workflows/README.md`) or via `scripts/dev.sh --rollback`
+locally.
 
-## kubectl
+The cluster database is the CloudNativePG `Cluster` `db` in
+`deploy/database.yaml` (1 instance, 1 GiB, 100m/256Mi requests, 500m/512Mi
+limits): Service `db-rw:5432`, database `app`, user `app`; the operator
+creates Secret `db-app` (keys `username`, `password`, `host`, `port`,
+`dbname`, `uri`) — it is not in git.
 
-Radar is the main way in, but kubectl and helm work too. Your cluster's kubeconfig is in Secret `kubeconfig` in namespace `default`, key `config`:
+## Elasticsearch session search (optional)
 
-1. In Radar Cloud, open your cluster, then **Resources** > **Secrets** (under Configuration), and open `kubeconfig` in namespace `default`.
-2. Under **Data**, click **Reveal** next to `config`, then the copy icon that appears beside it ("Copy value"). Don't do this while sharing your screen.
-3. Save it to a file outside your repo (the repo is public, and anyone with this file is cluster-admin in your cluster), and use it:
-   ```bash
-   export KUBECONFIG=~/cnh-kubeconfig
-   kubectl get pods -n team-<team-name>
-   ```
+The app serves full-text session search and title suggestions from an Elastic
+Cloud Serverless project; the Postgres schedule is mirrored into it.
 
-It talks to `https://<team-name>.vc.cnh.radarhq.io`. Its token lasts 24 hours and the platform replaces it about every 12 hours, so a fresh copy is good for at least 12 hours. If kubectl says `Unauthorized`, copy it again.
+1. **Create the credentials Secret** `es-credentials` in `team-stg-fryte`
+   through the cluster's Secret UI (outside git, so the key never lands in the
+   repo or an agent's history). The Deployment reads keys `url` and `key`; the
+   ingest Job below reads `url` and `api_key` — store the same API key under
+   both `key` and `api_key`, plus the project endpoint under `url`.
+2. **Ingest the schedule** — on-demand workflow: Actions > **es-ingest** >
+   *Run workflow*. One-time setup: set a repo secret `KUBECONFIG` to the
+   base64 of the cluster kubeconfig. The workflow runs `node
+   ingest-schedule.js` as a uniquely named one-off Job **inside the cluster**
+   (template in `.github/jobs/es-ingest.yaml`, TTLs itself after an hour), so it
+   reaches `db-rw` directly and egresses to Elasticsearch on its own. The
+   script creates index `sessions_v1` with the `sessions` alias, deletes stale
+   documents, and bulk-indexes all sessions keyed by session id — re-running it
+   after a schedule migration is idempotent.
+3. The kubeconfig token rotates about every 12 hours; refresh the `KUBECONFIG`
+   secret if a run fails with `Unauthorized`.
 
-## When something's wrong
+To also re-sync automatically on every deploy, add a `push: branches: [main]`
+trigger to `.github/workflows/es-ingest.yaml` (it is commented out there).
 
-- **Your agent can't find your cluster.** Check that you accepted the invite with an email your team listed when it joined, and that you picked **Cloud Native Hackathon** under "Organization access" when you connected the MCP server. Your cluster is named exactly `<team-name>`.
-- **A pod stays `Pending`.** Read its events in Radar. A `SyncError` means the host refused it (see [Your cluster](#your-cluster)): `exceeded quota: team-quota` means you're over your budget; otherwise it asks for privileged or host access.
-- **The URL answers 404 or 503 while your pods are healthy.** Check Service `app` in `team-<team-name>`: port 80, and a selector that matches your ready pods.
-- **kubectl says `Unauthorized`.** The token expired. Copy `config` again.
-- **Radar Cloud is down.** Run Radar on your laptop with your kubeconfig (copy it early, so you have one):
-  ```bash
-  curl -fsSL https://get.radarhq.io | sh
-  kubectl radar --kubeconfig ~/cnh-kubeconfig
-  ```
-  Its MCP server is `http://localhost:9280/mcp`. For Claude Code: `claude mcp add radar-local --transport http http://localhost:9280/mcp`. It sees only your cluster, so its tools take no `cluster`.
+## Observability and Dash0 (optional)
 
-## Bringing a cluster of your own instead
+- Prometheus (pre-installed, namespace `monitoring`) scrapes the app's metrics
+  port 9464 using the `prometheus.io/*` annotations on the Deployment; the
+  public Service forwards only 8080. Aggregate bingo snapshots refresh every
+  30 s; snapshots older than 60 s go stale (`bingo_aggregate_fresh` must be 1
+  when interpreting results).
+- To export to Dash0, create Secret `dash0-telemetry` in `team-stg-fryte` with
+  string keys `endpoint` (OTLP HTTP base endpoint) and `headers`
+  (`Authorization=Bearer <token>,Dash0-Dataset=default`), created in the Secret
+  UI and never committed. The app appends `/v1/metrics` and exports every 30 s;
+  changing the Secret requires a GitOps rollout to reload env vars, and export
+  outages never block requests.
+- Import the saved dashboard: Dash0 **Dashboards** > Create > New dashboard >
+  *Edit as JSON* with `docs/observability/dash0-dashboard.json` (default
+  dataset). Full instructions, panel semantics and validation notes are in
+  `docs/observability/README.md`.
 
-You can run on a cluster you bring (kind, k3d, minikube or a cloud cluster, including one on your laptop) instead of the one we give you. It still counts for judging.
+## Shipping a change (the deploy loop)
 
-**Use your own Radar Cloud organization, not the hackathon's.** Don't add your cluster to Cloud Native Hackathon: every team could see it there. Your own organization is free: up to 3 clusters and 100 AI investigations a month. You also lose the public URL, Prometheus and organizer access to your cluster.
+Deploys are GitOps — a push is not a deploy; you are done only when the new
+version answers at the URL:
 
-### On your laptop, in one command
+1. **Push to `main`.** The `build-and-deploy` Action (`.github/workflows/deploy.yaml`)
+   builds the image `ghcr.io/stg-fryte/infra:<7-char commit sha>` (+ `latest`)
+   and pushes it to GHCR, then commits `deploy: <sha> [skip ci]` updating
+   `newName`/`newTag` in `deploy/kustomization.yaml`. Pushes that touch only
+   `*.md` and/or `deploy/kustomization.yaml` are skipped — markdown changes
+   deploy nothing, and a kustomization-only push keeps the existing image.
+2. **Wait for the build**, e.g. `gh run list --workflow build-and-deploy
+   --commit <full-sha>` then `gh run watch <run-id> --exit-status`.
+3. **`git pull --rebase`** to take the bot's `deploy:` commit; without it your
+   next push is rejected.
+4. Argo CD auto-syncs `deploy/` (prune + self-heal). Don't apply or patch app
+   manifests on the cluster directly — self-heal reverts them.
+5. **Verify:** the live Deployment's image matches the tag in the remote
+   `deploy/kustomization.yaml`, the rollout completes, and
+   `https://stg-fryte.cnh.radarhq.io` shows the new version. New pods pulling
+   the image also prove the GHCR package is public.
 
-This is for a few teams, if the shared cluster has a problem. You need Docker running (Docker Desktop, OrbStack, colima or Rancher Desktop) with about 4 GB of memory free, `kubectl`, `helm`, and k3d (`brew install k3d`; kind or minikube work too). In your copy of this repo:
+The `ship` and `debug-failure` skills in `.agents/skills/` spell this out step
+by step, including how to confirm the sync through Radar's `manage_gitops` /
+`wait_for` and how to read failure evidence (`issues`, events, logs,
+`diagnose`).
 
-```bash
-./scripts/local-cluster.sh <team-name>
-```
+## Secrets reference
 
-It creates a one-node cluster, `cnh-<team-name>`, set up like the one the hackathon gives you: Argo CD, Argo Rollouts, the Gateway API CRDs, and namespace `team-<team-name>` with its Argo CD project. Your repo's manifests work there as they are. The script stops twice, for things only you can do:
+All Secrets live in the cluster, outside git. Create them through Radar Cloud's
+resource editor (or `apply_resource`) rather than pasting values into an agent
+chat; after changing one, restart the workload so it picks up the new env vars.
 
-1. Connect the cluster to your own Radar Cloud organization: create it as in step 1 under [Any other cluster](#any-other-cluster), click **Connect a cluster**, name the cluster exactly `<team-name>`, and run the Helm command it shows in your terminal. The script never sees that command or its token.
-2. Push your repo, if you haven't yet (it runs `./scripts/setup.sh` for you first).
+| Secret (namespace `team-stg-fryte` unless noted) | Created by | Keys | Read by |
+|---|---|---|---|
+| `db-app` | CloudNativePG operator | `username`, `password`, `host`, `port`, `dbname`, `uri` | app (`DATABASE_URL`) |
+| `es-credentials` | you, manually | `url`, `key`, `api_key` | app (search) and the ES ingest Job |
+| `dash0-telemetry` | you, manually | `endpoint`, `headers` | app (OTLP export) |
+| `kubeconfig` (namespace `default`) | the platform | `config` | your local kubectl; base64 of it is also the GitHub repo secret for the es-ingest workflow |
+| GitHub repo secret `KUBECONFIG` | you, in GitHub | base64 kubeconfig | `.github/workflows/es-ingest.yaml` |
 
-Then it applies `argocd/application.yaml` and prints how to open the app (`kubectl port-forward`; there's no public URL on a laptop) and connect your agent to Radar's MCP server. Pick your own organization, not Cloud Native Hackathon, under "Organization access". Running it again is safe: it skips what's done. `./scripts/local-cluster.sh <team-name> --down` deletes the cluster.
+Never write a kubeconfig, token or API key into the repo, a commit, a build
+argument or your output — the repo and the image are public.
 
-AGENTS.md describes the hackathon cluster. Add this at the top of it, with your names filled in:
+## Optional add-ons
 
-> **This team is NOT on the hackathon cluster.** We run our own cluster, `<team-name>`, on a laptop, in our own Radar Cloud organization `<your-org-name>`, not Cloud Native Hackathon; it's the only cluster there. There is no `https://<team-name>.cnh.radarhq.io`: check the new version through Radar's port-forward (or `kubectl -n team-<team-name> port-forward svc/app 8080:80`, then `http://localhost:8080`) instead. There's no Prometheus, and no budget or host limits apply here.
+- **Autoscaling** — copy `examples/hpa/hpa.yaml` into `deploy/`, add it to
+  `deploy/kustomization.yaml`, delete `replicas:` from `deploy/deployment.yaml`
+  (Argo CD and the autoscaler would fight otherwise), push. Scales on CPU
+  against the container's 100m request, 2–4 replicas.
+- **Canary releases** — replace `deployment.yaml` with
+  `examples/canary/rollout.yaml` under `resources:` in
+  `deploy/kustomization.yaml` (4 replicas; new image goes to 25% and pauses for
+  a human or agent decision, then 50% for a minute, then everything). Promote
+  or abort through Radar (`manage_rollout`) or the Rollout's page. See the
+  `canary-release` skill.
+- **More Postgres / other dependencies, one-off Jobs, dependencies and
+  inspecting the running app** — recipes in `examples/agent-workflows/README.md`.
 
-Venue wifi is slow. Before the event, run `./scripts/local-cluster.sh --pull` to download the images and charts (about 500 MB); `--images` lists them.
+## Cluster notes (hackathon vcluster)
 
-If your copy of this repo is older than the script, fetch it first:
+- **Budget** — one total across all namespaces, including anything you install:
+  2 CPU / 4 GiB requests, 4 CPU / 8 GiB limits, 4 PVCs / 20 GiB (gp3). Containers
+  without requests/limits get 100m / 128Mi and 500m / 512Mi. A pod over budget
+  stays `Pending` with a `SyncError` event `exceeded quota: team-quota`.
+- **Host refusals** — privileged pods and hostPath/hostNetwork/hostPID pods stay
+  `Pending` with a `SyncError` Warning event on the pod.
+- **Pre-installed, don't touch** — Argo CD (`argocd`), Argo Rollouts,
+  Prometheus (`monitoring`), the CloudNativePG operator, the metrics setup,
+  AppProject `team-stg-fryte`, Secret `default/kubeconfig`, and Radar
+  (namespace `radar`, v1.19 on purpose — don't upgrade it).
+- **The HTTPRoute in `deploy/` does nothing inside the vcluster** (it has no
+  Gateway) — the platform routes the team URL to Service `app`, port 80.
+  Argo CD counts it healthy, so leave it.
+- **Known platform noise** — the CoreDNS issue, the first-minute Warning events,
+  `argocd-applicationset-controller` scaled to 0, and Checks findings on the
+  pre-installed platform are expected; see "What every team sees" in
+  `AGENTS.md`.
+- **kubectl** works if you copied the kubeconfig (Secret `kubeconfig` in
+  namespace `default`, key `config`); its token lasts 24 h and is replaced
+  about every 12 h. Prefer Radar's tools: they're what the track is about.
+- **When Radar Cloud is down** — run Radar locally with your kubeconfig; its
+  MCP server is `http://localhost:9280/mcp` and its tools take no `cluster`.
 
-```bash
-curl -fsSL -o scripts/local-cluster.sh https://raw.githubusercontent.com/skyhook-io/cnh-starter/main/scripts/local-cluster.sh && chmod +x scripts/local-cluster.sh
-```
+## Agent skills
 
-### Any other cluster
+`.agents/skills/` (loaded by Claude Code and Codex; `.claude/skills` links
+there) holds the team's procedures:
 
-It needs Argo CD, and Argo Rollouts if you use `examples/canary`.
+- `get-started` — checks and completes first-time setup from a fresh clone.
+- `ship` — deploy a push and prove it is live.
+- `debug-failure` — find the root cause of a failure and fix it in git.
+- `canary-release` — run, check, promote or abort a canary.
+- `demo-story` — draft the end-of-day story from Radar.
+- `elasticsearch-onboarding` — general ES guidance, pinned from
+  `elastic/agent-skills` in `skills-lock.json`.
 
-1. **Create your organization.** Sign in at [app.radarhq.io](https://app.radarhq.io).
-   - New to Radar Cloud: name your organization when it asks.
-   - Already in Cloud Native Hackathon: open the menu under your name (bottom left) > **Create organization**. If the sign-in screen offers the hackathon invite, choose **Create a new organization instead**.
-
-   Invite your teammates from **Settings > Members**. Check that the organization switcher shows your new organization, not Cloud Native Hackathon, before the next step.
-2. **Connect your cluster.** Click **Connect a cluster** and name the cluster exactly `<team-name>`, the same name you give `setup.sh`. Your agent finds the cluster by that name. Run the Helm command it shows in a terminal whose kubectl context is your cluster (`kubectl config current-context`). The command carries your cluster's token: paste it into your terminal only, never into the repo, a chat or your agent.
-3. **Point the repo at your team.** Make your copy and clone it (step 1 of [Ship your own code](#ship-your-own-code)), then:
-   ```bash
-   ./scripts/setup.sh <team-name>
-   ```
-   Delete the `- httproute.yaml` line from `deploy/kustomization.yaml`: it points at the hackathon's gateway, and your cluster has none.
-4. **Tell your agent where it is.** AGENTS.md and the skills describe the hackathon cluster. Add this at the top of `AGENTS.md`, with your names filled in:
-   > **This team is NOT on the hackathon cluster.** We run our own cluster, `<team-name>`, in our own Radar Cloud organization `<your-org-name>`, not Cloud Native Hackathon; it's the only cluster there. The Argo CD Application is `app-<team-name>` in namespace `argocd` (project `default`), not `app` in `team-<team-name>`; use that name and namespace wherever a skill says `app`. There is no `https://<team-name>.cnh.radarhq.io`: check the new version through Radar's port-forward (or `kubectl -n team-<team-name> port-forward svc/app 8080:80`, then `http://localhost:8080`) instead. No budget or host limits apply here.
-5. **Push, and make the image public.**
-   ```bash
-   git commit -am "Set up team <team-name> on our own cluster" && git pull --rebase && git push
-   ```
-   Wait for the Action to go green (the repo's **Actions** tab), then make the image public once: on your repo's GitHub page, **Packages** > **Package settings** > **Change visibility** > **Public**. Your cluster can't pull a private image.
-6. **Start GitOps.** Create the namespace, then apply `argocd/application-byo.yaml`, not `argocd/application.yaml`:
-   ```bash
-   kubectl create namespace team-<team-name>
-   kubectl apply -f argocd/application-byo.yaml
-   ```
-   It uses Argo CD's `default` project.
-7. **Connect your agent** as in [Connect your agent](#connect-your-agent), but pick **your own organization** under "Organization access", not Cloud Native Hackathon.
-8. **Open your app** with Radar's port-forward, or `kubectl -n team-<team-name> port-forward svc/app 8080:80` and `http://localhost:8080`. It shows `version` and your latest commit.
-
-## After today
-
-Connect your own cluster to Radar Cloud. Hackathon participants get 3 months of Enterprise free: tell us your org name at the Radar table or in reply to our follow-up email, by Nov 30. Or run open-source Radar (`brew install kubectl-radar`), and star [skyhook-io/radar](https://github.com/skyhook-io/radar) if it helped.
-
-## Help
-
-Find Roy, Nadav or Arlen at the Radar table, or ask in `#cnh-hackathon` on the [Radar Discord](https://radarhq.io/community/chat).
+`AGENTS.md` is the master note for any coding agent in this repo: cluster
+identity, GitOps rules, limits, and the never-do list.
