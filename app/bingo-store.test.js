@@ -31,6 +31,18 @@ test('Postgres enforces bingo deadlines and aggregates distinct current reports'
   const setEnd = async (interval) => {
     await pool.query(`UPDATE sessions SET end_time=((clock_timestamp()+$2::interval) AT TIME ZONE 'America/Denver')::time WHERE id=$1`, [session.id,interval]);
   };
+  await t.test('future events reject new cards and marks on an existing card', async () => {
+    await pool.query(`UPDATE sessions SET start_time=((clock_timestamp()+interval '10 minutes') AT TIME ZONE 'America/Denver')::time WHERE id=$1`, [session.id]);
+    assert.equal((await store.startCard(pool,user,session.id)).status,'not_started');
+    assert.equal(await store.loadCard(pool,user,session.id),null);
+    const cells = Array.from({length:25},(_,i)=>i===12?'FREE':`word ${i}`);
+    await pool.query('INSERT INTO bingo_cards(user_id,session_id,cells) VALUES($1,$2,$3)',[user,session.id,JSON.stringify(cells)]);
+    assert.equal((await store.startCard(pool,user,session.id)).status,'not_started');
+    assert.equal((await store.markCard(pool,user,session.id,0,true)).status,'closed');
+    assert.ok(!(await store.loadCard(pool,user,session.id)).marked.includes(0));
+    await pool.query('DELETE FROM bingo_cards WHERE user_id=$1 AND session_id=$2',[user,session.id]);
+    await pool.query(`UPDATE sessions SET start_time='00:00' WHERE id=$1`,[session.id]);
+  });
   await t.test('explicit start is idempotent and reads never create cards', async () => {
     assert.equal(await store.loadCard(pool,user,session.id), null);
     await setEnd('1 hour');
@@ -131,7 +143,32 @@ test('Postgres enforces bingo deadlines and aggregates distinct current reports'
     const result = await (await request(`/api/sessions/${session.id}/buzzwords`)).json();
     assert.equal(result.final,true); assert.equal(result.participants,2);
     assert.equal((await pool.query('SELECT count(*) AS count FROM bingo_cards')).rows[0].count,before);
-    const card = await request(`/bingo/${session.id}`); assert.match(await card.text(),/Results are final/);
+    await t.test('winner claim remains accessible through corrections and read-only reloads', async () => {
+      await pool.query('UPDATE session_prizes SET winner_user_id=$1, won_at=clock_timestamp() WHERE session_id=$2',[user,session.id]);
+      await pool.query('UPDATE bingo_cards SET marked=ARRAY[0,1,2,3,4,12], bingo_at=clock_timestamp() WHERE user_id=$1 AND session_id=$2',[user,session.id]);
+      await setEnd('-5 minutes');
+      const correcting = await request(`/bingo/${session.id}`);
+      assert.equal(correcting.status,200);
+      const correctingHtml = await correcting.text();
+      assert.match(correctingHtml,/You won Test prize\. Show this screen at the session to claim it\./);
+      assert.match(correctingHtml,/Corrections close/);
+      assert.ok([...correctingHtml.matchAll(/<button\b[^>]*name="cell"[^>]*>/g)].some(([button])=>!button.includes('disabled')));
+      await setEnd('-11 minutes');
+      const savedCard = await store.loadCard(pool,user,session.id);
+      for (let reload=0;reload<2;reload++) {
+        const response = await request(`/bingo/${session.id}`);
+        assert.equal(response.status,200);
+        const html = await response.text();
+        assert.match(html,/You won Test prize\. Show this screen at the session to claim it\./);
+        assert.match(html,/Results are final\. Your card is read-only\./);
+        const buttons=[...html.matchAll(/<button\b[^>]*name="cell"[^>]*>/g)];
+        assert.equal(buttons.length,25);
+        assert.ok(buttons.every(([button])=>button.includes('disabled')));
+        assert.equal((await request(`/bingo/${session.id}/mark`,{method:'POST',body:new URLSearchParams({cell:'0',checked:'false'})})).status,409);
+      }
+      assert.deepEqual(await store.loadCard(pool,user,session.id),savedCard);
+      assert.equal((await pool.query('SELECT count(*) AS count FROM bingo_cards')).rows[0].count,before);
+    });
     assert.equal((await request(`/bingo/${session.id}/mark`,{method:'POST',body:new URLSearchParams({cell:'0',checked:'false'})})).status,409);
     assert.equal((await request(`/bingo/${session.id}/mark`,{method:'POST',body:new URLSearchParams({cell:''})})).status,400);
     assert.equal((await request(`/api/sessions/${session.id}/buzzwords`,{method:'POST'})).status,405);
@@ -144,6 +181,12 @@ test('Postgres enforces bingo deadlines and aggregates distinct current reports'
     await request(`/bingo/${session.id}`);
     assert.equal(await store.loadCard(pool,users[2].id,session.id),null);
     await setEnd('1 hour');
+    await pool.query(`UPDATE sessions SET start_time=((clock_timestamp()+interval '10 minutes') AT TIME ZONE 'America/Denver')::time WHERE id=$1`,[session.id]);
+    assert.equal((await request(`/bingo/${session.id}`)).status,403);
+    assert.equal((await request(`/bingo/${session.id}/start`,{method:'POST',body:new URLSearchParams({notice:'acknowledged'})})).status,403);
+    assert.equal((await request(`/bingo/${session.id}/mark`,{method:'POST',body:new URLSearchParams({cell:'0',checked:'true'})})).status,403);
+    assert.equal(await store.loadCard(pool,users[2].id,session.id),null);
+    await pool.query(`UPDATE sessions SET start_time='00:00' WHERE id=$1`,[session.id]);
     assert.equal((await request(`/bingo/${session.id}/start`,{method:'POST'})).status,400);
     assert.equal((await request(`/bingo/${session.id}/start`,{method:'POST',body:new URLSearchParams({notice:'acknowledged'})})).status,303);
     assert.equal((await request(`/bingo/${session.id}/mark`,{method:'POST',body:new URLSearchParams({cell:'0',checked:'true'})})).status,303);

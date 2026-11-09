@@ -56,7 +56,7 @@ Rollback identifies only this migration's inserts. It must preserve sessions tha
 - Existing `app/venue-map.js` and `app/floor-plans.js`: verified external destination and new room/meeting-area rendering where the existing map cannot display the published location. Mapping data belongs in migration 009; extend existing `app/venue-map.test.js` for these cases.
 - New `app/schedule.test.js`: focused regression coverage in the current Node test style.
 
-No package additions, new service, API, or framework. One focused PR covers schedule completeness and access to the additional days. It is independent of the open live-event Bingo PR.
+No package additions, new service, API, or framework. The schedule implementation was independent of the live-event Bingo PR. At the user's subsequent request, PR #12 is integrated locally for combined verification; new cards require a live event while existing cards retain main's 10-minute correction window.
 
 ## Validation before completion
 

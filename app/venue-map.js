@@ -4,6 +4,9 @@
  function isUpcoming(event, now = Date.now()) {
   return new Date(event.ends_at).getTime() > now;
  }
+ function isLive(event, now = Date.now()) {
+  return new Date(event.starts_at).getTime() <= now && isUpcoming(event, now);
+ }
  // Verified against OSM/Nominatim on 2026-11-09. Keep the source element for
  // auditing; requests during browsing use tiles only, not a public geocoder.
  const externalVenues = {
@@ -193,7 +196,14 @@
    detail.append(create('p',[event.venue,event.floor,event.room].filter(Boolean).join(' · '),'event-location'));
    if (event.level) detail.append(create('p',`Level: ${event.level}`));
    if (event.notes) detail.append(create('p',event.notes));
-   const bingo = create('a','Play Buzzword Bingo','purple-link'); bingo.href = `/bingo/${encodeURIComponent(event.id)}`; bingo.target='_blank'; bingo.rel='noopener'; detail.append(bingo);
+   updateBingoLink();
+  }
+  function updateBingoLink() {
+   const existing = detail.querySelector('[data-bingo]');
+   if (!selectedEvent || !isLive(selectedEvent)) {existing?.remove(); return;}
+   if (existing) return;
+   const bingo = create('a','Play Buzzword Bingo','purple-link'); bingo.dataset.bingo = '';
+   bingo.href = `/bingo/${encodeURIComponent(selectedEvent.id)}`; bingo.target='_blank'; bingo.rel='noopener'; detail.append(bingo);
   }
   function selectEvent(id, updateUrl = true) {
    selectedEvent = data.events.find(event=>String(event.id)===String(id));
@@ -220,6 +230,7 @@
    }
   }, 30000);
   eventPicker.addEventListener('change',()=>selectEvent(eventPicker.value));
+  setInterval(updateBingoLink, 1000);
   venuePicker.addEventListener('change',()=>showStack(venuePicker.value));
   floorPicker.addEventListener('change',()=>{if (floorPicker.value) showFloor(venuePicker.value,Number(floorPicker.value));});
   byId('floor-overview').addEventListener('click',()=>showStack(venuePicker.value));
@@ -234,7 +245,7 @@
    displayDestination(true);
   } else {showDetails(null); showStack(view.venue);}
  }
- const api = {resolveDestination, selectDestination, mapLinks, offsitePreview, isUpcoming, mount};
+ const api = {resolveDestination, selectDestination, mapLinks, offsitePreview, isUpcoming, isLive, mount};
  if (typeof module !== 'undefined' && module.exports) module.exports = api;
  else root.VenueMap = api;
 })(typeof window === 'undefined' ? globalThis : window);
