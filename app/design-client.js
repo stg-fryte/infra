@@ -21,7 +21,7 @@
    const isSaved = saved.has(row.dataset.id);
    button.setAttribute('aria-pressed', String(isSaved));
    button.setAttribute('aria-label', `${isSaved ? 'Remove from my schedule' : 'Add to my schedule'}: ${row.querySelector('.session-title').textContent}`);
-   button.textContent = isSaved ? 'Added to my schedule' : 'Add to my schedule';
+   button.textContent = isSaved ? 'Add to my schedule' : 'Add to my schedule';
    button.title = isSaved ? 'Remove from my schedule' : 'Add to my schedule';
   });
   document.querySelector('#result-count').textContent = count;
