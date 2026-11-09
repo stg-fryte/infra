@@ -9,6 +9,11 @@ test('demo results are deterministic aggregate-only fixtures with valid exposure
   assert.equal(demo.source,'synthetic');
   assert.ok(demo.participants>=24 && demo.participants<=96);
   assert.equal(demo.words.reduce((n,w)=>n+w.shown,0),demo.participants*24);
+  assert.equal(demo.choices.length,25);
+  assert.equal(demo.choices[12],'FREE');
+  assert.equal(demo.words.length,24);
+  assert.deepEqual(demo.words.map(w=>w.word).sort(),demo.choices.filter((_,i)=>i!==12).sort());
+  assert.ok(demo.words.every(w=>w.shown===demo.participants));
   assert.ok(demo.words.some(w=>w.reported>0));
   for(const word of demo.words){
     assert.ok(word.reported>=0 && word.reported<=word.shown && word.shown<=demo.participants);

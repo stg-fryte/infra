@@ -61,8 +61,11 @@ real eligible card takes precedence, even when it has no marked words. HTML show
 “Synthetic demo data” and “simulated participants”; JSON has `source: synthetic`
 or `source: attendee` (string values).
 
-The generator uses the existing card layout and vocabulary to simulate 24–96
-participants, then keeps only per-word exposure and report totals. It creates no
+The generator uses the existing card generator to create one fixed 25-cell demo
+card per event, then simulates 24–96 participants using those exact choices. The
+word cloud and table contain only the card's 24 non-FREE choices; each choice's
+exposure equals the simulated participant count. The read-only demo card is shown
+in a disclosure above the cloud, and JSON includes its `choices`. It creates no
 accounts, stored cards, clicks or prize winners and never changes database data.
 The fixed v1 seed makes repeated reads stable. Aggregate metrics remain under
 `bingo_*`; invented samples use separate `bingo_demo_*` instruments.

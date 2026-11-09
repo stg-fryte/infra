@@ -1,5 +1,5 @@
 const { createHash } = require('node:crypto');
-const { buildCard, expectedWords, FREE_INDEX } = require('./bingo');
+const { buildCard, FREE_INDEX } = require('./bingo');
 
 const CONTENT_FORMATS = new Set(['Talk','Lightning Talk','Workshop','Tutorial',
   'Keynote','End User Talk','Maintainer Track','10-Minute Tip Talk','Cloud Native Theater',
@@ -17,19 +17,18 @@ function demoResults(result) {
   let seed = createHash('sha256').update(`bingo-demo-v1:${result.id}:${result.title}`).digest().readUInt32LE(0) || 1;
   const random = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) / 4294967296; };
   const participants = 24 + Math.floor(random()*73);
-  const words = new Map(expectedWords(result).map(w=>[w.key,{...w,expected:true,shown:0,reported:0,rate:null}]));
-  // Assign a stable popularity to each word, then simulate exposure using the
-  // actual card generator. Only aggregate counters survive this function.
+  const choices = buildCard(result,random);
+  const words = new Map(choices.filter((_,index)=>index!==FREE_INDEX)
+    .map(word=>[word.trim().toLowerCase(),{key:word.trim().toLowerCase(),word,expected:true,shown:participants,reported:0,rate:null}]));
+  // The demo represents one fixed card, so every reported word is an actual
+  // choice on that card. FREE and unused vocabulary candidates never contribute.
   const popularity = new Map([...words.keys()].map(key=>[key,0.1+random()*0.8]));
   for(let account=0;account<participants;account++) {
-    buildCard(result,random).forEach((label,index)=>{
-      if(index===FREE_INDEX) return;
-      const key=label.trim().toLowerCase(), word=words.get(key);
-      word.shown++;
+    for(const [key,word] of words) {
       if(random()<popularity.get(key)) word.reported++;
-    });
+    }
   }
-  return {...result,source:'synthetic',participants,
+  return {...result,source:'synthetic',participants,choices,
     words:[...words.values()].map(w=>({...w,rate:w.shown?w.reported/w.shown:null}))
       .sort((a,b)=>b.reported-a.reported || a.word.localeCompare(b.word))};
 }
