@@ -24,6 +24,8 @@ const PASSWORD_MAX = 128;
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 const MIGRATION_FILE = /^\d+_[a-z0-9_]+\.sql$/;
 const MIGRATION_LOCK_KEY = 727001;
+const BOOTSTRAP_CSS_URL = '/static/bootstrap.min.css';
+const bootstrapCss = fs.readFileSync(require.resolve('bootstrap/dist/css/bootstrap.min.css'));
 
 const sessions = [
   { id: 1, time: '10:00', room: 'Main', title: 'Kickoff and sponsor talks' },
@@ -145,22 +147,36 @@ function send(res, status, contentType, body, headers = {}) {
 }
 
 const page = (title, body) =>
-  `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title>${body}`;
+  `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="${BOOTSTRAP_CSS_URL}"></head><body class="bg-body-tertiary">${body}</body></html>`;
 
 function authForm(kind, error) {
   const isRegister = kind === 'register';
   const heading = isRegister ? 'Create account' : 'Log in';
   const other = isRegister ? '<a href="/login">Have an account? Log in</a>' : '<a href="/register">Need an account? Register</a>';
-  const note = error ? `<p role="alert">${escapeHtml(error)}</p>` : '';
-  const hint = isRegister ? `<small>3-32 chars: a-z 0-9 _ . - · password ${PASSWORD_MIN}+ chars</small>` : '';
+  const note = error ? `<div class="alert alert-danger" role="alert">${escapeHtml(error)}</div>` : '';
+  const usernameHint = isRegister
+    ? '<div class="form-text">3-32 characters: a-z, 0-9, _ . -</div>'
+    : '';
+  const passwordHint = isRegister ? `<div class="form-text">At least ${PASSWORD_MIN} characters.</div>` : '';
+  const confirmField = isRegister
+    ? `<div class="mb-3"><label class="form-label" for="confirm">Confirm password</label>
+<input class="form-control" id="confirm" name="confirm" type="password" required autocomplete="new-password"></div>`
+    : '';
   return page(
     heading,
-    `<h1>${escapeHtml(team)}</h1><h2>${heading}</h2>${note}
+    `<main class="container py-5" style="max-width:26rem">
+<h1 class="h3 text-center mb-4">${escapeHtml(team)}</h1>
+<div class="card shadow-sm"><div class="card-body p-4">
+<h2 class="h5 mb-3">${heading}</h2>${note}
 <form method="post" action="/${kind}">
-<p><label>Username <input name="username" required autocomplete="username"></label></p>
-<p><label>Password <input name="password" type="password" required autocomplete="${isRegister ? 'new-password' : 'current-password'}"></label></p>
-${isRegister ? '<p><label>Confirm password <input name="confirm" type="password" required autocomplete="new-password"></label></p>' : ''}
-${hint}<p><button>${heading}</button></p></form><p>${other}</p>`,
+<div class="mb-3"><label class="form-label" for="username">Username</label>
+<input class="form-control" id="username" name="username" required autocomplete="username" autofocus>${usernameHint}</div>
+<div class="mb-3"><label class="form-label" for="password">Password</label>
+<input class="form-control" id="password" name="password" type="password" required autocomplete="${isRegister ? 'new-password' : 'current-password'}">${passwordHint}</div>
+${confirmField}
+<button class="btn btn-primary w-100">${heading}</button>
+</form></div></div>
+<p class="text-center mt-3">${other}</p></main>`,
   );
 }
 
@@ -214,6 +230,9 @@ async function handleLogout(req, res) {
 
 async function route(req, res, url) {
   if (url.pathname === '/healthz') return send(res, 200, 'text/plain', 'ok\n');
+  if (url.pathname === BOOTSTRAP_CSS_URL && req.method === 'GET') {
+    return send(res, 200, 'text/css; charset=utf-8', bootstrapCss, { 'cache-control': 'public, max-age=86400' });
+  }
   if (url.pathname === '/readyz') {
     if (!schemaReady) return send(res, 503, 'text/plain', 'schema not ready\n');
     await pool.query('SELECT 1');
@@ -248,15 +267,31 @@ async function route(req, res, url) {
     return send(res, 200, 'text/html; charset=utf-8', map);
   }
   if (url.pathname === '/') {
-    const rows = sessions.map((s) => `<li>${s.time} · ${s.room} · ${s.title}</li>`).join('');
+    const rows = sessions
+      .map(
+        (s) =>
+          `<tr><td>${escapeHtml(s.time)}</td><td>${escapeHtml(s.room)}</td><td>${escapeHtml(s.title)}</td></tr>`,
+      )
+      .join('');
     return send(
       res,
       200,
       'text/html; charset=utf-8',
       page(
         team,
-        `<h1>${escapeHtml(team)}</h1><p>version ${escapeHtml(version)} · signed in as ${escapeHtml(user.username)}</p>
-<form method="post" action="/logout"><button>Log out</button></form><p><a href="/map">Explore the Salt Palace map</a></p><ul>${rows}</ul>`,
+        `<nav class="navbar bg-body border-bottom"><div class="container">
+<span class="navbar-brand">${escapeHtml(team)}</span>
+<div class="d-flex align-items-center gap-3">
+<span class="text-body-secondary small">Signed in as <strong>${escapeHtml(user.username)}</strong></span>
+<form method="post" action="/logout" class="m-0"><button class="btn btn-outline-secondary btn-sm">Log out</button></form>
+</div></div></nav>
+<main class="container py-4">
+<h1 class="h4 mb-3">Schedule</h1>
+<div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover mb-0">
+<thead><tr><th>Time</th><th>Room</th><th>Session</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+<p class="mt-3"><a href="/map">Explore the Salt Palace map</a></p>
+<p class="text-body-secondary small">version ${escapeHtml(version)}</p>
+</main>`,
       ),
     );
   }
