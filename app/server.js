@@ -1,6 +1,12 @@
 const fs = require('node:fs');
 const ui = require('./ui');
+<<<<<<< HEAD
 const { isUpcoming } = require('./venue-map');
+=======
+const resultsUi = require('./results-ui');
+const historyStore = require('./history-store');
+const { validateProfile } = require('./profile');
+>>>>>>> 6e01d86 (paste events updates, added menu)
 const http = require('node:http');
 const { readFile } = require('node:fs/promises');
 const path = require('node:path');
@@ -36,7 +42,37 @@ const PASSWORD_MAX = 128;
 const BOOTSTRAP_CSS_URL = '/static/bootstrap.min.css';
 const bootstrapCss = fs.readFileSync(require.resolve('bootstrap/dist/css/bootstrap.min.css'));
 
+<<<<<<< HEAD
 async function loadSchedule(history = false) {
+=======
+const SCHEDULE_QUERY = `
+  SELECT s.id,
+         d.label AS day,
+         to_char(d.event_date, 'YYYY-MM-DD') AS date,
+         to_char(s.start_time, 'HH24:MI') AS start_time,
+         to_char(s.end_time, 'HH24:MI') AS end_time,
+         (d.event_date + s.end_time) AT TIME ZONE 'America/Denver' AS ends_at,
+         s.title,
+         t.name AS track,
+         s.level,
+         s.format,
+         l.venue,
+         l.level AS floor,
+         l.room,
+         l.id AS location_id,
+         s.notes,
+         COALESCE(string_agg(sp.name, ', ' ORDER BY sp.name), '') AS speakers
+  FROM sessions s
+  JOIN days d ON d.id = s.day_id
+  JOIN locations l ON l.id = s.location_id
+  LEFT JOIN tracks t ON t.id = s.track_id
+  LEFT JOIN session_speakers ss ON ss.session_id = s.id
+  LEFT JOIN speakers sp ON sp.id = ss.speaker_id
+  GROUP BY s.id, d.id, t.id, l.id
+  ORDER BY d.event_date, s.start_time, s.end_time, s.id`;
+
+async function loadSchedule() {
+>>>>>>> 6e01d86 (paste events updates, added menu)
   const { rows } = await pool.query(SCHEDULE_QUERY);
   const now = Date.now();
   return rows.filter(event => history ? !isUpcoming(event, now) : isUpcoming(event, now));
@@ -372,6 +408,20 @@ async function route(req, res, url) {
     }
     await pool.query('INSERT INTO user_profiles (user_id, data) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()', [user.id, JSON.stringify(profile)]);
     return send(res, 303, 'text/plain', '', { location: '/profile?saved=1' });
+  }
+
+  if (url.pathname === '/history') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', {allow: 'GET'});
+    const events = (await loadSchedule()).filter(event => new Date(event.ends_at).getTime() <= Date.now());
+    return send(res, 200, 'text/html; charset=utf-8', resultsUi.historyPage(events, {team,version,user}));
+  }
+  const historyResult = /^\/sessions\/(\d{1,9})\/results$/.exec(url.pathname);
+  if (historyResult) {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', {allow: 'GET'});
+    const result = await historyStore.loadResults(pool, Number(historyResult[1]));
+    if (!result) return send(res, 404, 'text/plain', 'Session not found');
+    const session = (await loadSchedule()).find(event => event.id === result.id);
+    return send(res, 200, 'text/html; charset=utf-8', resultsUi.resultsPage(result, {team,version,user,session}));
   }
 
   const bingoMatch = BINGO_PATH.exec(url.pathname);
