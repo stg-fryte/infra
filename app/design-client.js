@@ -5,6 +5,29 @@
  const list = document.querySelector('#session-list');
  const suggestList = document.querySelector('#session-suggest');
  const tabs = [...document.querySelectorAll('[data-day]')];
+ const dayStrip = document.querySelector('#day-tabs');
+ const dayScrollButtons = [...document.querySelectorAll('[data-day-scroll]')];
+ const scrollBehavior = () => document.documentElement.dataset.reduceMotion === 'true' || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth';
+ function updateDayScroll() {
+  const max = dayStrip.scrollWidth - dayStrip.clientWidth;
+  dayScrollButtons.forEach(button => {
+   button.disabled = Number(button.dataset.dayScroll) < 0 ? dayStrip.scrollLeft <= 1 : dayStrip.scrollLeft >= max - 1;
+  });
+ }
+ function revealDay(behavior = scrollBehavior()) {
+  const tab = tabs.find(t => t.dataset.day === selectedDay);
+  if (!tab) return;
+  const stripBox = dayStrip.getBoundingClientRect();
+  const tabBox = tab.getBoundingClientRect();
+  const offset = tabBox.left < stripBox.left ? tabBox.left-stripBox.left : tabBox.right > stripBox.right ? tabBox.right-stripBox.right : 0;
+  if (offset) dayStrip.scrollBy({left:offset, behavior});
+  updateDayScroll();
+ }
+ dayScrollButtons.forEach(button => button.addEventListener('click', () => {
+  dayStrip.scrollBy({left:Number(button.dataset.dayScroll)*dayStrip.clientWidth*.8, behavior:scrollBehavior()});
+ }));
+ dayStrip.addEventListener('scroll', updateDayScroll, {passive:true});
+ new ResizeObserver(() => revealDay('instant')).observe(dayStrip);
  const input = document.querySelector('#session-search');
  const track = document.querySelector('#track-filter');
  const storageKey = 'kube-companion-saved:' + shell.dataset.user;
@@ -15,8 +38,9 @@
  // Restore the original title on every row (the ES highlight replaces it while a query is active)
  // and pin the track option values so the dropdown keeps filtering on the bare track name.
  all.forEach(row => { row.dataset.title = row.querySelector('.session-title').textContent; });
- const trackOrig = new Map([...track.options].map(option => [option.textContent, option.textContent]));
- [...track.options].forEach(option => { option.value = option.textContent; });
+ const trackOrig = new Map([...track.options].map(option => [option.value, option.textContent]));
+ // Materialize implicit values before facet labels change; keep All tracks empty.
+ [...track.options].forEach(option => { option.value = option.value; });
  // Elasticsearch-backed search state. When es.dead the UI keeps the original
  // client-side substring filter, so the app works without Elasticsearch.
  const es = { dead: false, results: null, facets: null, key: '', req: 0 };
@@ -134,7 +158,7 @@
   }, 200);
  }
  tabs.forEach((t, i) => {
-  t.addEventListener('click', () => {selectedDay = t.dataset.day; update(); scheduleSearch();});
+  t.addEventListener('click', () => {selectedDay = t.dataset.day; update(); revealDay(); scheduleSearch();});
   t.addEventListener('keydown', e => {if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]; next.focus(); next.click();});
  });
  input.addEventListener('input', () => {update(); scheduleSearch(); scheduleSuggest();});
@@ -144,7 +168,7 @@
   e.preventDefault();
   mode = b.dataset.nav;
   if (mode === 'saved') {const first = all.find(r => saved.has(r.dataset.id) && Date.parse(r.dataset.endsAt) > Date.now()); if (first) selectedDay = first.dataset.date;}
-  update(); scheduleSearch(); document.querySelector('#sessions').scrollIntoView({behavior:'smooth', block:'start'});
+  update(); revealDay(); scheduleSearch(); document.querySelector('#sessions').scrollIntoView({behavior:'smooth', block:'start'});
  }));
  document.querySelectorAll('[data-save]').forEach(b => b.addEventListener('click', async () => {
   const id = b.closest('.session').dataset.id;
@@ -183,6 +207,7 @@
  document.querySelector('#jump-sessions').addEventListener('click', () => {document.querySelector('#sessions').scrollIntoView({behavior:'smooth'}); input.focus({preventScroll:true});});
  document.addEventListener('keydown', e => {if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {e.preventDefault(); input.focus();}});
  update();
+ revealDay('instant');
  if (input.value.trim() && !es.dead) scheduleSearch();
  setInterval(update, 30000);
 })();

@@ -7,6 +7,10 @@
  // Verified against OSM/Nominatim on 2026-11-09. Keep the source element for
  // auditing; requests during browsing use tiles only, not a public geocoder.
  const externalVenues = {
+  // Coordinates are the destination (!3d/!4d), not the camera center, in the
+  // official schedule's Location Map links (Sessionize 1340051 and 1368973).
+  'Edison House': {center:[40.7617511,-111.8963346],label:'Edison House · venue pin'},
+  'Hyatt Regency Lobby': {center:[40.7656411,-111.8943473],label:'Hyatt Regency · building pin; meet inside the lobby',meetingPoint:true},
   'Hilton Salt Lake City Center': {center:[40.763903,-111.8932573],osm:'way/33192533'},
   'Kimpton Monaco SLC': {center:[40.7646563,-111.8919453],osm:'way/172543265'},
   'Clark Planetarium': {center:[40.7667062,-111.9031435],osm:'node/11141711596'},
@@ -149,10 +153,10 @@
    clearSurface();
    const empty = byId('map-empty');
    empty.hidden = false;
-   empty.replaceChildren(create('h2',destination.kind === 'external' ? 'Beyond the venue' : 'Location details unavailable'),create('p',message));
+   empty.replaceChildren(create('h2',destination.preview?.meetingPoint ? 'Meeting point' : destination.kind === 'external' ? 'Beyond the venue' : 'Location details unavailable'),create('p',message));
    byId('map-context-venue').textContent = destination.venue || 'Location unavailable';
    byId('map-venue-heading').textContent = destination.venue || view.venue;
-   byId('map-context-floor').textContent = destination.kind === 'external' ? 'Off-site' : 'No mapped room';
+   byId('map-context-floor').textContent = destination.preview?.meetingPoint ? 'Meeting point' : destination.kind === 'external' ? 'Off-site' : 'No mapped room';
    if (destination.kind === 'external' && destination.preview && root.L) {
     const preview = create('div'); preview.id = 'offsite-preview'; preview.setAttribute('aria-label',`OpenStreetMap preview of ${destination.venue}`); empty.append(preview);
     const target = destination.preview;
@@ -160,7 +164,8 @@
     const generation = renderId;
     root.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>'})
      .on('tileerror',()=>{if (renderId === generation) status.textContent = 'Some map tiles could not load. The map links below are still available.';}).addTo(offsiteMap);
-    root.L.circleMarker(target.center,{radius:9,color:'#6935b3',fillColor:'#a77bda',fillOpacity:.85,weight:3}).addTo(offsiteMap).bindTooltip(create('span',destination.venue));
+    root.L.circleMarker(target.center,{radius:9,color:'#6935b3',fillColor:'#a77bda',fillOpacity:.85,weight:3}).addTo(offsiteMap).bindTooltip(create('span',target.label || destination.venue));
+    if (target.label) empty.append(create('p',target.label));
    }
    if (destination.links) {
     for (const [provider,label] of [['google','Open in Google Maps'],['apple','Open in Apple Maps']]) {
