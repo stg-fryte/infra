@@ -177,5 +177,9 @@ const initialLocation=new URLSearchParams(window.location.search).get('location'
 if(initialLocation && mapData.locations.some(location=>String(location.id)===initialLocation)){
  locationPicker.value=initialLocation;
  locationPicker.onchange();
+ if(mappedRoomIds.size && window.matchMedia('(max-width: 650px)').matches){
+  const mapId=venuePicker.value==='Hyatt Regency' ? 'hyatt-map' : 'map';
+  document.getElementById(mapId).scrollIntoView();
+ }
 }
 </script></body></html>
