@@ -17,6 +17,7 @@ const shapes = {
  compact:'<rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/>',
  spark:'<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',
  people:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 3 6"/>',
+ lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>',
  close:'<path d="m6 6 12 12M6 18 18 6"/>'
 };
 const icon = name => `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[name] || shapes.spark}</svg>`;
@@ -27,7 +28,7 @@ const venueArt = `<svg class="venue-art" viewBox="0 0 360 165" fill="none" aria-
 const bingoNotice = '<p>Your bingo card and marks are saved to your account. We combine eligible cards into per-session word counts and word clouds. Aggregate reports do not include your username; prize winners are shown by username as part of the game. <a href="/privacy">Read the bingo privacy notice</a>.</p>';
 
 function page(title, body, extraHead = '') {
- if (body.includes('class="main-nav"')) body = body.replace('</nav>', '<a class="nav-item" href="/history">'+icon('clock')+' Past events</a><a class="nav-item" href="/privacy">Bingo privacy</a></nav>');
+ if (body.includes('class="main-nav"') && !body.includes('href="/history"')) body = body.replace('</nav>', '<a class="nav-item" href="/history">'+icon('clock')+' Past events</a></nav>');
  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#6e42c1"><meta name="description" content="Your KubeCon + CloudNativeCon 2026 conference companion. Explore sessions, build your schedule, and find your way."><title>${esc(title)} · Kube Companion</title>${extraHead}<style>${css}</style></head><body>${body}<script>${script}</script></body></html>`;
 }
 
@@ -43,9 +44,17 @@ function applyProfile(html,user) {
  html=html.replace('</head>',`<style>${themeCss}\n${profileCss}</style>${boot}</head>`).replace('</body>',`<script>${preferenceClient}</script></body>`);
  if(!html.includes('href="/profile" aria-current="page"')) html=html.replace('</nav>',`<a class="nav-item" href="/profile">${icon('people')} My profile ${icon('arrow')}</a></nav>`);
  if (!/<(?:a|button)[^>]*data-nav="saved"/.test(html)) html=html.replace(/(<nav class="main-nav"[^>]*>[\s\S]*?<\/a>)/,'$1'+`<a class="nav-item" href="/?view=saved#sessions">${icon('bookmark')} My schedule</a>`);
+ html=html.replace(/<a class="nav-item(?: active)?" href="\/privacy"[^>]*>[\s\S]*?<\/a>/g,'');
+ const privacyLink=`<a class="nav-item sidebar-privacy-link${html.includes('<title>Bingo privacy')?' active':''}" href="/privacy">${icon('lock')} Bingo privacy</a>`;
+ html=html.replace('<div class="profile">',privacyLink+'<div class="profile">');
  const avatar=p.photo?`<img src="${esc(p.photo)}" alt="${esc(name)}">`:esc(name[0].toUpperCase());
  html=html.replace(/<div class="profile">[\s\S]*?<\/form><\/div>/,`<div class="profile"><a class="profile-avatar-link avatar" href="/profile" aria-label="Edit my profile">${avatar}</a><a class="profile-name-link" href="/profile"><strong>${esc(name)}</strong><small>Profile & appearance</small></a><form method="post" action="/logout"><button aria-label="Log out" title="Log out">${icon('logout')}</button></form></div>`);
  return html;
+}
+
+function navigationPage(title,content,{team,version,user},extraHead='') {
+ const body=`<div class="history-shell"><aside class="sidebar"><a class="brand" href="/" aria-label="Kube Companion home">${logo}</a><div class="sidebar-event"><span class="event-square">K</span><div><strong>KubeCon NA 2026</strong><small>Salt Lake City, Utah</small></div></div><span class="nav-label">YOUR CONFERENCE</span><nav class="main-nav" aria-label="Main navigation"><a class="nav-item" href="/">${icon('calendar')} Explore schedule</a><a class="nav-item" href="/map">${icon('map')} Venue map</a><a class="nav-item" href="/event-rooms">${icon('pin')} Room mappings</a><a class="nav-item${title === 'Bingo privacy' ? '' : ' active'}" href="/history"${title === 'Bingo privacy' ? '' : ' aria-current=\"page\"'}>${icon('clock')} Past events</a></nav><div class="sidebar-bottom"><div class="community-card"><span class="little-spark">${icon('clock')}</span><h3>The ideas stay with you.</h3><p>Revisit the talks.<br>See what the community heard.</p></div><div class="profile"><span class="avatar">${esc(user.username[0].toUpperCase())}</span><div><strong>${esc(user.username)}</strong><small>${esc(team)}</small></div><form method="post" action="/logout"><button aria-label="Log out">${icon('logout')}</button></form></div></div></aside><div class="workspace"><header class="topbar"><div class="breadcrumb"><a href="/">Your conference</a><span>/</span><strong>${esc(title)}</strong></div><div class="topbar-place"><span class="status-dot"></span> KubeCon + CloudNativeCon <span class="year-pill">2026</span></div></header><main class="dashboard history-main"><div class="mini-label">THE WORDS THAT BROUGHT US TOGETHER</div><h1>${esc(title)}</h1>${content}<footer class="page-footer"><span>Made for the cloud native community ✦</span><span>${esc(team)} · ${esc(version)}</span></footer></main></div></div>`;
+ return applyProfile(page(title,body,extraHead),user);
 }
 
 function authForm(kind, error, {team, passwordMin = 8}) {
@@ -164,4 +173,4 @@ function roomMappings(rows, {team, version, user}) {
 }
 
 
-module.exports = {esc, logo, bingoNotice, page, authForm, scheduleHtml, dashboard:(rows,ctx)=>applyProfile(dashboard(rows,ctx),ctx.user), bingoPage:(user,session,card,ctx)=>applyProfile(bingoPage(user,session,card,ctx),user), mapPage:(source,ctx)=>applyProfile(mapPage(source,ctx),ctx.user), roomMappings:(rows,ctx)=>applyProfile(roomMappings(rows,ctx),ctx.user), profilePage:ctx=>applyProfile(profileUI.render(ctx,{page,esc,icon,logo}),ctx.user)};
+module.exports = {navigationPage,esc, logo, bingoNotice, page, authForm, scheduleHtml, dashboard:(rows,ctx)=>applyProfile(dashboard(rows,ctx),ctx.user), bingoPage:(user,session,card,ctx)=>applyProfile(bingoPage(user,session,card,ctx),user), mapPage:(source,ctx)=>applyProfile(mapPage(source,ctx),ctx.user), roomMappings:(rows,ctx)=>applyProfile(roomMappings(rows,ctx),ctx.user), profilePage:ctx=>applyProfile(profileUI.render(ctx,{page,esc,icon,logo}),ctx.user)};

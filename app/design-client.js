@@ -223,6 +223,7 @@
  update();
  revealDay('instant');
  if (input.value.trim() && !es.dead) scheduleSearch();
+ if(new URLSearchParams(location.search).get('view')==='saved') document.querySelector('[data-nav="saved"]').click();
  updateBingoLinks();
  setInterval(updateBingoLinks, 1000);
  setInterval(update, 30000);
