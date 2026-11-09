@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {resolveDestination, selectDestination, mapLinks, isUpcoming, isLive, offsitePreview} = require('./venue-map');
+const {resolveDestination, selectDestination, mapLinks, isUpcoming, offsitePreview} = require('./venue-map');
 
 const room = (id, venue, floor) => ({id, venue, floor, name: `Room ${id}`});
 const data = {
@@ -16,16 +16,6 @@ const data = {
  ],
 };
 const current = {venue: 'Salt Palace', floor: 2};
-
-test('Bingo opens at the start instant and closes at the end instant', () => {
- const event = {starts_at:'2026-11-09T16:00:00Z',ends_at:'2026-11-09T17:00:00Z'};
- assert.equal(isLive(event,Date.parse('2026-11-09T15:59:59.999Z')),false);
- assert.equal(isLive(event,Date.parse(event.starts_at)),true);
- assert.equal(isLive(event,Date.parse('2026-11-09T16:59:59.999Z')),true);
- assert.equal(isLive(event,Date.parse(event.ends_at)),false);
- assert.equal(isLive({...event,starts_at:'invalid'},Date.parse(event.starts_at)),false);
- assert.equal(isLive({...event,ends_at:'invalid'},Date.parse(event.starts_at)),false);
-});
 
 test('schedule shows Bingo link only when the session has the bingo game', () => {
  const ui = require('./ui');

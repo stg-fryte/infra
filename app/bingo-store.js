@@ -31,8 +31,6 @@ async function startCard(pool, userId, sessionId) {
     await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`bingo:${userId}:${sessionId}`]);
     const session = await loadSession(db, sessionId);
     if (!session) return { status: 'missing' };
-    const { rows: [timing] } = await db.query('SELECT clock_timestamp() >= $1::timestamptz AS started',[session.starts_at]);
-    if (!timing.started) return { status: 'not_started' };
     const existing = await loadCard(db, userId, sessionId);
     if (existing) return { status: 'ok' };
     const { rowCount } = await db.query(`INSERT INTO bingo_cards(user_id,session_id,cells,created_at)
@@ -65,7 +63,6 @@ async function markCard(pool, userId, sessionId, index, checked) {
            ELSE array_remove(c.marked,$2) END
       FROM sessions s JOIN days d ON d.id=s.day_id
       WHERE c.id=$1 AND s.id=c.session_id
-        AND clock_timestamp() >= (d.event_date+s.start_time) AT TIME ZONE 'America/Denver'
         AND c.created_at < (d.event_date+s.end_time) AT TIME ZONE 'America/Denver'
         AND clock_timestamp() < ((d.event_date+s.end_time) AT TIME ZONE 'America/Denver') + interval '10 minutes'
       RETURNING c.marked`, [card.id, index, checked]);
