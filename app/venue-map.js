@@ -112,9 +112,13 @@
    for (const room of rooms) {
     const points = plan.points(room);
     if (!points) {missing++; continue;}
-    const shape = root.L.polygon(points.map(([x,y])=>[height-(y-top),x-left]), {color:'#6935b3', fillColor:'#a77bda',fillOpacity:.5,weight:2.5}).addTo(layers);
-    shape.bindTooltip(create('span',room.name));
-    selectedBounds.extend(shape.getBounds());
+    const positions = points.map(([x,y])=>[height-(y-top),x-left]);
+    const pin = room.boundary?.type === 'Point';
+    const shape = (pin
+     ? root.L.circleMarker(positions[0], {radius:9,color:'#6935b3',fillColor:'#a77bda',fillOpacity:1,weight:3})
+     : root.L.polygon(positions, {color:'#6935b3', fillColor:'#a77bda',fillOpacity:.5,weight:2.5})).addTo(layers);
+    shape.bindTooltip(create('span',room.name), {permanent:pin, direction:'top'});
+    if (pin) selectedBounds.extend(positions[0]); else selectedBounds.extend(shape.getBounds());
    }
    map.fitBounds(fitSelection && selectedBounds.isValid() ? selectedBounds.pad(.65) : bounds, {padding:[35,35],maxZoom:1.5,animate:false});
    byId('fit').onclick = () => map.fitBounds(bounds,{padding:[25,25],animate:false});
