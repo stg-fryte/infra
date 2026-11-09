@@ -374,7 +374,7 @@ async function route(req, res, url) {
     `);
     const map = await readFile(path.join(__dirname, 'map.html'), 'utf8');
     const data = JSON.stringify(mapData).replace(/</g, '\\u003c');
-    return send(res, 200, 'text/html; charset=utf-8', map.replace('<!-- MAP_DATA -->', () => data));
+    return send(res, 200, 'text/html; charset=utf-8', ui.mapPage(map.replace('<!-- MAP_DATA -->', () => data), { team, version, user }));
   }
   if (url.pathname === '/event-rooms') {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
