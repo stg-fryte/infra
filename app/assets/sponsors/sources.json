@@ -1,0 +1,26 @@
+[
+  {
+    "asset": "sonar.svg",
+    "bytes": 8917,
+    "viewBox": "0 0 101 32",
+    "source": "https://assets-eu-01.kc-usercontent.com/ef593040-b591-0198-9506-ed88b30bc023/8e59bcad-6e39-41dc-abd9-a0e251e8d63f/Sonar%20%282%29.svg"
+  },
+  {
+    "asset": "dash0.svg",
+    "bytes": 3237,
+    "viewBox": "0 0 105 20",
+    "source": "https://www.dash0.com/shared/logo-white.svg"
+  },
+  {
+    "asset": "radar.svg",
+    "bytes": 3894,
+    "viewBox": "0 0 256 256",
+    "source": "https://radarhq.io/images/radar/radar-icon-hub.svg"
+  },
+  {
+    "asset": "elasticsearch.svg",
+    "bytes": 3314,
+    "viewBox": "0 0 205 204",
+    "source": "https://www.elastic.co/favicon.svg"
+  }
+]
