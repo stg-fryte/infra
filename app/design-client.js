@@ -3,6 +3,7 @@
  if (!shell) return;
  const all = [...document.querySelectorAll('.session')];
  const tabs = [...document.querySelectorAll('[data-day]')];
+ // TODO(schedule-completion): Scroll the day strip with controls; reveal selected tabs after restore/keyboard navigation and respect reduced motion.
  const input = document.querySelector('#session-search');
  const track = document.querySelector('#track-filter');
  const storageKey = 'kube-companion-saved:' + shell.dataset.user;

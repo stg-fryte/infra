@@ -45,6 +45,7 @@ function applyProfile(html,user) {
 }
 
 function authForm(kind, error, {team, passwordMin = 8}) {
+ // TODO(schedule-completion): Update conference dates and remove the partial-schedule copy after the backfill.
  const register = kind === 'register';
  return page(register ? 'Create an account' : 'Welcome back', `<div class="auth-layout"><section class="auth-story"><a class="brand brand-light" href="/">${logo}</a><div class="auth-message"><span class="eyebrow">KUBECON + CLOUDNATIVECON · NA 2026</span><h1>Your people.<br>Your next big idea.<br><span>All in one place.</span></h1><p>Make room for discovery. Find your sessions, map out your days, and make the most of Salt Lake City.</p>${art}<div class="auth-event">${icon('pin')} Salt Lake City, Utah <span>November 8–10, 2026*</span></div></div><small>*Available schedule: Sunday through Tuesday midday.</small></section><main class="auth-main"><div class="auth-form"><span class="mini-label">LET’S GET YOU CONNECTED</span><h2>${register ? 'Join the community.' : 'Welcome back.'}</h2><p>${register ? 'Create your account and start exploring.' : 'Your next great session is waiting for you.'}</p>${error ? `<div class="form-error" role="alert">${esc(error)}</div>` : ''}<form method="post" action="/${kind}"><label for="username">Username</label><input id="username" name="username" autocomplete="username" placeholder="Your username" required autofocus ${register ? 'minlength="3" maxlength="32"' : ''}>${register ? '<small>3–32 characters: a–z, 0–9, underscore, dot, or dash.</small>' : ''}<label for="password">Password</label><input id="password" name="password" type="password" autocomplete="${register ? 'new-password' : 'current-password'}" placeholder="Enter your password" required ${register ? `minlength="${passwordMin}" maxlength="128"` : ''}>${register ? `<small>At least ${passwordMin} characters.</small><label for="confirm">Confirm password</label><input id="confirm" name="confirm" type="password" autocomplete="new-password" placeholder="One more time" required>` : ''}<button class="primary-button auth-submit">${register ? 'Create account' : 'Let’s go'} ${icon('arrow')}</button></form><p class="auth-switch">${register ? 'Already part of the community? <a href="/login">Log in</a>' : 'New around here? <a href="/register">Create an account</a>'}</p><div class="auth-team">${icon('spark')} A little less planning. A lot more discovering.<small>${esc(team)}</small></div></div></main></div>`);
 }
@@ -58,6 +59,7 @@ function scheduleHtml(schedule) {
 }
 
 function dashboard(schedule, {team, version, user, savedIds}) {
+ // TODO(schedule-completion): Wrap day tabs with accessible left/right scroll controls and update coverage copy.
  const days = [...new Map(schedule.map(s => [s.date, s.day])).entries()];
  const tracks = [...new Set(schedule.map(s => s.track || s.format || 'General'))].sort();
  const venues = new Set(schedule.map(s => s.venue).filter(Boolean));
