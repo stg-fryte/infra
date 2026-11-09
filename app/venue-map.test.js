@@ -17,6 +17,22 @@ const data = {
 };
 const current = {venue: 'Salt Palace', floor: 2};
 
+test('South Entrance is a named point on the first floor, without a made-up room boundary', () => {
+ const plans = require('./floor-plans');
+ const entrance = {id:99,venue:'Salt Palace',floor:1,name:'South Entrance',boundary:{type:'Point',coordinates:[-111.89597777568913,40.76749822983771]}};
+ const destination = resolveDestination(1, {...data,rooms:[...data.rooms,entrance]}, [99]);
+ assert.equal(destination.kind,'indoor');
+ assert.deepEqual(selectDestination(current,destination),{mode:'floors',venue:'Salt Palace',floor:1});
+ const plan = plans.get('Salt Palace',1);
+ const [point] = plan.points(entrance);
+ assert.ok(Math.abs(point[0]-486.343) < .001);
+ assert.ok(Math.abs(point[1]-698.09) < .01);
+ assert.equal(plans.get('Salt Palace',2).points(entrance),null);
+ const svg = plans.svg(plan,[entrance]);
+ assert.ok(svg.includes('<circle '));
+ assert.ok(!svg.includes('fill-opacity=".5"'));
+});
+
 test('event room assignments override shared location rooms, including an empty assignment', () => {
  assert.deepEqual(resolveDestination(2, data, [4]).rooms.map(r => r.id), [4]);
  assert.deepEqual(resolveDestination(2, data, [2]).rooms.map(r => r.id), [2]);

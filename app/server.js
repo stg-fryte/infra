@@ -52,6 +52,7 @@ const SCHEDULE_QUERY = `
   LEFT JOIN tracks t ON t.id = s.track_id
   LEFT JOIN session_speakers ss ON ss.session_id = s.id
   LEFT JOIN speakers sp ON sp.id = ss.speaker_id
+  WHERE NOT s.hidden
   GROUP BY s.id, d.id, t.id, l.id
   ORDER BY d.event_date, s.start_time, s.end_time, s.id`;
 
@@ -265,7 +266,7 @@ async function loadBingoSession(sessionId) {
      LEFT JOIN tracks t ON t.id = s.track_id
      LEFT JOIN session_prizes p ON p.session_id = s.id
      LEFT JOIN users w ON w.id = p.winner_user_id
-     WHERE s.id = $1`,
+     WHERE s.id = $1 AND NOT s.hidden`,
     [sessionId],
   );
   return rows[0] || null;
@@ -449,6 +450,7 @@ async function route(req, res, url) {
       LEFT JOIN session_rooms ON session_rooms.session_id = sessions.id
       LEFT JOIN rooms ON rooms.id = session_rooms.room_id
       WHERE (days.event_date + sessions.end_time) AT TIME ZONE 'America/Denver' > CURRENT_TIMESTAMP
+        AND NOT sessions.hidden
       GROUP BY sessions.id, days.id, locations.id
       ORDER BY days.event_date, sessions.start_time, sessions.id
     `);

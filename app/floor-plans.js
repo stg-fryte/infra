@@ -18,7 +18,11 @@
   6:{page:1,x:726,y:873,width:294,height:463},
  };
  function rectangle(x,y,width,height) {return [[x,y],[x+width,y],[x+width,y+height],[x,y+height]];}
+ function saltCoordinate([lng,lat]) {
+  return [106+(lat-40.7654077)*589/(40.7686451-40.7654077),196+(lng+111.8994612)*449/(-111.8963461+111.8994612)];
+ }
  function saltPoints(room, floor) {
+  if (room.boundary?.type === 'Point') return floor === 1 ? [saltCoordinate(room.boundary.coordinates)] : null;
   const match = /^(250|251)([A-F])$/.exec(room.name);
   if (floor === 2 && match) {
    const i = match[2].charCodeAt(0)-65;
@@ -36,7 +40,7 @@
    return ring.map(([lng,lat]) => [frame[0]+(lat-40.768769913)/(.00042793)*frame[2],frame[1]+(lng+111.896478992)/(.000737929)*frame[3]]);
   }
   if (floor !== 1 || !/^(Hall |Ballroom |Room 15[01]$)/.test(room.name)) return null;
-  return ring.map(([lng,lat]) => [106+(lat-40.7654077)*589/(40.7686451-40.7654077),196+(lng+111.8994612)*449/(-111.8963461+111.8994612)]);
+  return ring.map(saltCoordinate);
  }
  function get(venue, floor) {
   floor = Number(floor);
@@ -50,7 +54,9 @@
  }
  function svg(plan, rooms = []) {
   const clip = plan.outline ? `<defs><clipPath id="floor-clip"><polygon points="${plan.outline.map(p=>p.join(',')).join(' ')}"/></clipPath></defs>` : '';
-  const polygons = rooms.map(room=>plan.points(room)).filter(Boolean).map(points=>`<polygon points="${points.map(p=>p.join(',')).join(' ')}" fill="#a77bda" fill-opacity=".5" stroke="#6935b3" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join('');
+  const polygons = rooms.map(room=>plan.points(room)).filter(Boolean).map(points=>points.length === 1
+   ? `<circle cx="${points[0][0]}" cy="${points[0][1]}" r="7" fill="#6935b3" stroke="white" stroke-width="2"/>`
+   : `<polygon points="${points.map(p=>p.join(',')).join(' ')}" fill="#a77bda" fill-opacity=".5" stroke="#6935b3" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${plan.box.join(' ')}" width="${plan.box[2]}" height="${plan.box[3]}">${clip}<image href="${plan.source}" width="${plan.sourceWidth}" height="${plan.sourceHeight}"${plan.outline ? ' clip-path="url(#floor-clip)"' : ''}/>${polygons}</svg>`;
  }
  const api = {get, svg, floors:venue=>venue === 'Salt Palace' ? [1,2,3] : venue === 'Hyatt Regency' ? [2,3,4,5,6] : []};
