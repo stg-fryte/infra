@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {resolveDestination, selectDestination, mapLinks, isUpcoming, offsitePreview} = require('./venue-map');
+const {resolveDestination, selectDestination, mapLinks, isUpcoming, isLive, offsitePreview} = require('./venue-map');
 
 const room = (id, venue, floor) => ({id, venue, floor, name: `Room ${id}`});
 const data = {
@@ -16,6 +16,27 @@ const data = {
  ],
 };
 const current = {venue: 'Salt Palace', floor: 2};
+
+test('Bingo opens at the start instant and closes at the end instant', () => {
+ const event = {starts_at:'2026-11-09T16:00:00Z',ends_at:'2026-11-09T17:00:00Z'};
+ assert.equal(isLive(event,Date.parse('2026-11-09T15:59:59.999Z')),false);
+ assert.equal(isLive(event,Date.parse(event.starts_at)),true);
+ assert.equal(isLive(event,Date.parse('2026-11-09T16:59:59.999Z')),true);
+ assert.equal(isLive(event,Date.parse(event.ends_at)),false);
+ assert.equal(isLive({...event,starts_at:'invalid'},Date.parse(event.starts_at)),false);
+ assert.equal(isLive({...event,ends_at:'invalid'},Date.parse(event.starts_at)),false);
+});
+
+test('schedule contains a Bingo link only for live events', () => {
+ const ui = require('./ui');
+ const event = {id:42,title:'Talk',starts_at:'2026-11-09T16:00:00Z',ends_at:'2026-11-09T17:00:00Z'};
+ for (const time of ['2026-11-09T15:59:59Z','2026-11-09T17:00:00Z']) {
+  const html = ui.scheduleHtml([event],Date.parse(time));
+  assert.ok(!html.includes('/bingo/'));
+  assert.ok(html.includes('data-save'));
+ }
+ assert.match(ui.scheduleHtml([event],Date.parse(event.starts_at)), /href="\/bingo\/42"/);
+});
 
 test('South Entrance is a named point on the first floor, without a made-up room boundary', () => {
  const plans = require('./floor-plans');
@@ -104,7 +125,7 @@ test('specific offsite venues get encoded provider links; generic offsite does n
 
 test('rendered schedule opens event details without interpreting event titles as HTML', () => {
  const ui = require('./ui');
- const html = ui.scheduleHtml([{id:42,title:'<img src=x onerror=alert(1)>',date:'2026-11-09',start_time:'09:00',end_time:'10:00',venue:'Salt Palace',room:'151'}]);
+ const html = ui.scheduleHtml([{id:42,title:'<img src=x onerror=alert(1)>',date:'2026-11-09',start_time:'09:00',end_time:'10:00',starts_at:'2026-11-09T16:00:00Z',ends_at:'2026-11-09T17:00:00Z',venue:'Salt Palace',room:'151'}],Date.parse('2026-11-09T16:00:00Z'));
  assert.match(html, /href="\/map\?event=42"/);
  assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
  assert.ok(!html.includes('<img src=x'));

@@ -7,6 +7,7 @@ const SCHEDULE_QUERY = `
          to_char(d.event_date, 'YYYY-MM-DD') AS date,
          to_char(s.start_time, 'HH24:MI') AS start_time,
          to_char(s.end_time, 'HH24:MI') AS end_time,
+         (d.event_date + s.start_time) AT TIME ZONE 'America/Denver' AS starts_at,
          (d.event_date + s.end_time) AT TIME ZONE 'America/Denver' AS ends_at,
          s.title,
          t.name AS track,
