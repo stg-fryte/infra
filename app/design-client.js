@@ -40,13 +40,14 @@
    const button = row.querySelector('[data-save]');
    const isSaved = saved.has(row.dataset.id);
    button.setAttribute('aria-pressed', String(isSaved));
-   button.setAttribute('aria-label', `${isSaved ? 'Remove saved session' : 'Save session'}: ${row.querySelector('.session-title').textContent}`);
-   button.title = isSaved ? 'Remove from my schedule' : 'Save session';
+   button.setAttribute('aria-label', `${isSaved ? 'Remove from my schedule' : 'Add to my schedule'}: ${row.querySelector('.session-title').textContent}`);
+   button.textContent = isSaved ? 'Add to my schedule' : 'Add to my schedule';
+   button.title = isSaved ? 'Remove from my schedule' : 'Add to my schedule';
   });
   document.querySelector('#result-count').textContent = count;
   document.querySelector('#saved-count').textContent = all.filter(row => saved.has(row.dataset.id) && Date.parse(row.dataset.endsAt) > Date.now()).length;
   document.querySelector('.empty-state').hidden = count > 0;
-  document.querySelector('#empty-message').textContent = mode === 'saved' ? 'No saved sessions match this day and these filters. Explore the schedule and bookmark your favorites.' : 'Try another search or track to find your next great session.';
+  document.querySelector('#empty-message').textContent = mode === 'saved' ? 'No saved sessions match this day and these filters. Explore the schedule and add your favorites.' : 'Try another search or track to find your next great session.';
   tabs.forEach(t => t.setAttribute('aria-selected', String(t.dataset.day === selectedDay)));
   const date = new Date(selectedDay + 'T12:00:00');
   document.querySelector('#day-label').textContent = Number.isNaN(date.getTime()) ? 'Sessions' : date.toLocaleDateString('en-US', {weekday:'long', month:'long',day:'numeric'});
