@@ -26,3 +26,18 @@
 
 .map-mobile-tools{display:none}
 @media(max-width:720px){.map-surface{order:-1;border-bottom:1px solid var(--line)}.map-controls{border-bottom:0;scroll-margin-top:15px}.map-mobile-tools{display:flex;position:absolute;z-index:700;bottom:78px;left:12px;gap:8px;align-items:center;padding:11px 13px;background:#8354b9;color:#fff;border:1px solid #7342ad;border-radius:8px;box-shadow:0 3px 15px #63428522;font-size:10px}.map-mobile-tools .icon{width:13px;height:13px}.map-mobile-tools .icon:last-child{transform:rotate(90deg);width:12px;height:12px}}
+
+
+/* A small invitation to play, with motion kept inside the button. */
+.bingo-link{position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;gap:9px;min-height:36px;margin-top:13px;padding:9px 12px;border:1px solid #8050bd;border-radius:8px;background:linear-gradient(115deg,#7545bc,#9464cb);color:#fff;font-size:11px;line-height:1.4;font-weight:600;box-shadow:0 3px 9px #7545c41c;transition:transform .2s,box-shadow .2s,background .2s}
+.bingo-link::after{content:'';position:absolute;z-index:-1;inset:-70% auto -70% 0;width:42%;pointer-events:none;background:linear-gradient(100deg,transparent,#ffffff30,transparent);transform:translateX(-180%) skewX(-16deg);animation:bingo-link-shimmer 8s ease-in-out infinite}
+.bingo-link .icon{width:14px;height:14px;transition:transform .2s}
+.bingo-link-symbol{display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;background:#ffffff1c;color:#f1e4ff;flex-shrink:0}
+.bingo-link-symbol .icon{width:13px;height:13px}
+.bingo-link:hover,.bingo-link:focus-visible{color:white;background:linear-gradient(115deg,#6937ad,#8854c3);box-shadow:0 6px 14px #7545c42b;transform:translateY(-2px)}
+.bingo-link:hover>.icon,.bingo-link:focus-visible>.icon{transform:translateX(3px)}
+.bingo-link:hover .bingo-link-symbol .icon{transform:rotate(16deg) scale(1.12)}
+.bingo-link:active{transform:translateY(0);box-shadow:0 2px 5px #7545c41c}
+@keyframes bingo-link-shimmer{0%,78%{transform:translateX(-180%) skewX(-16deg)}96%,100%{transform:translateX(350%) skewX(-16deg)}}
+@media(max-width:720px){.bingo-link{font-size:9px;gap:7px;padding:8px 10px;min-height:36px;margin-top:11px}.bingo-link-symbol{width:18px;height:18px}.bingo-link>.icon{width:12px;height:12px}}
+@media(prefers-reduced-motion:reduce){.bingo-link::after{animation:none}.bingo-link,.bingo-link .icon{transition:none}.bingo-link:hover,.bingo-link:focus-visible,.bingo-link:hover>.icon,.bingo-link:focus-visible>.icon,.bingo-link:hover .bingo-link-symbol .icon{transform:none}}
