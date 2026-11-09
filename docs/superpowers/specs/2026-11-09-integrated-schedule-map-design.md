@@ -8,6 +8,8 @@ Main now provides the themed map workbench. The user requested selecting an even
 
 Inspection confirmed all three Salt Palace levels are in the embedded brochure image. Crop those source regions, preserving PDF coordinates for room overlays, and use Leaflet's image-coordinate view for top-down pan/zoom. Pixel registration replaces the inaccurate schematic-to-street stretch; it does not change stored room data. The stacked view uses the same floor images and polygon coordinates. Named pins and schedule classification remain separate follow-up work.
 
+Two further user additions are included: show an OSM preview for named off-site venues above the Google/Apple links, and hide ended events from the UI without deleting stored records. The seven known external places were verified with OSM/Nominatim; retain their source element IDs in the small preview lookup and use OSM-attributed tiles at runtime, with no runtime geocoding. Unrecognized destinations retain links without a guessed preview. Calculate each event's ending instant using America/Denver. Server-rendered lists/API omit ended events; open schedule and map views recheck every 30 seconds and remove ended selections. Ongoing events remain visible. Direct historic bingo URLs continue to work; this is display filtering, not data deletion.
+
 ## Intent and user decisions
 
 Help attendees find an event without leaving the conference interface. The user chose a side-by-side schedule and map, keeping the PDF drawing visible and highlighting only the selected event's rooms. Salt Palace and Hyatt events share the interface; off-site events offer Google Maps and Apple Maps links.

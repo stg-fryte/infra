@@ -15,7 +15,7 @@
  function update() {
   let count = 0;
   all.forEach(row => {
-   row.hidden = row.dataset.date !== selectedDay || (mode === 'saved' && !saved.has(row.dataset.id)) || (track.value && row.dataset.track !== track.value) || !row.dataset.search.includes(input.value.trim().toLowerCase());
+   row.hidden = Date.parse(row.dataset.endsAt) <= Date.now() || row.dataset.date !== selectedDay || (mode === 'saved' && !saved.has(row.dataset.id)) || (track.value && row.dataset.track !== track.value) || !row.dataset.search.includes(input.value.trim().toLowerCase());
    if (!row.hidden) count++;
    const button = row.querySelector('[data-save]');
    const isSaved = saved.has(row.dataset.id);
@@ -24,7 +24,7 @@
    button.title = isSaved ? 'Remove from my schedule' : 'Save session';
   });
   document.querySelector('#result-count').textContent = count;
-  document.querySelector('#saved-count').textContent = all.filter(row => saved.has(row.dataset.id)).length;
+  document.querySelector('#saved-count').textContent = all.filter(row => saved.has(row.dataset.id) && Date.parse(row.dataset.endsAt) > Date.now()).length;
   document.querySelector('.empty-state').hidden = count > 0;
   document.querySelector('#empty-message').textContent = mode === 'saved' ? 'No saved sessions match this day and these filters. Explore the schedule and bookmark your favorites.' : 'Try another search or track to find your next great session.';
   tabs.forEach(t => t.setAttribute('aria-selected', String(t.dataset.day === selectedDay)));
@@ -41,7 +41,7 @@
   document.querySelectorAll('[data-nav]').forEach(n => n.classList.toggle('active', n === b));
   document.querySelector('#schedule-heading').textContent = mode === 'saved' ? 'My schedule' : 'Explore the schedule';
   document.querySelector('#breadcrumb-current').textContent = mode === 'saved' ? 'My schedule' : 'Explore schedule';
-  if (mode === 'saved') {const first = all.find(r => saved.has(r.dataset.id)); if (first) selectedDay = first.dataset.date;}
+  if (mode === 'saved') {const first = all.find(r => saved.has(r.dataset.id) && Date.parse(r.dataset.endsAt) > Date.now()); if (first) selectedDay = first.dataset.date;}
   update(); document.querySelector('#sessions').scrollIntoView({behavior:'smooth', block:'start'});
  }));
  document.querySelectorAll('[data-save]').forEach(b => b.addEventListener('click', () => {
@@ -58,19 +58,6 @@
  document.querySelector('#reset-filters').addEventListener('click', () => {input.value = ''; track.value = ''; update();});
  document.querySelector('#jump-sessions').addEventListener('click', () => {document.querySelector('#sessions').scrollIntoView({behavior:'smooth'}); input.focus({preventScroll:true});});
  document.addEventListener('keydown', e => {if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {e.preventDefault(); input.focus();}});
- const dialog = document.querySelector('#session-dialog');
- // TODO(integrated-map): Replace the modal with shared details and same-floor/top-down versus different-floor/stack transitions.
- document.querySelectorAll('[data-details]').forEach(b => b.addEventListener('click', () => {
-  const row = b.closest('.session');
-  const content = document.querySelector('#dialog-content'); content.replaceChildren();
-  const tag = row.querySelector('.session-tags').cloneNode(true); content.append(tag);
-  const title = document.createElement('h2'); title.textContent = b.textContent; content.append(title);
-  const date = document.createElement('p'); date.className = 'dialog-time'; date.textContent = `${row.dataset.date} · ${row.querySelector('.session-time').innerText.replace('\n', ' – ')} Mountain Time`; content.append(date);
-  content.append(row.querySelector('.session-meta').cloneNode(true));
-  const details = row.querySelector('.session-details').cloneNode(true); details.hidden = false; content.append(details);
-  dialog.showModal();
- }));
- document.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
- dialog.addEventListener('click', e => {if (e.target === dialog) {const r = dialog.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dialog.close();}});
  update();
+ setInterval(update, 30000);
 })();

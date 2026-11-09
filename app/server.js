@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const ui = require('./ui');
+const { isUpcoming } = require('./venue-map');
 const http = require('node:http');
 const { readFile } = require('node:fs/promises');
 const path = require('node:path');
@@ -33,6 +34,7 @@ const SCHEDULE_QUERY = `
          to_char(d.event_date, 'YYYY-MM-DD') AS date,
          to_char(s.start_time, 'HH24:MI') AS start_time,
          to_char(s.end_time, 'HH24:MI') AS end_time,
+         (d.event_date + s.end_time) AT TIME ZONE 'America/Denver' AS ends_at,
          s.title,
          t.name AS track,
          s.level,
@@ -54,7 +56,8 @@ const SCHEDULE_QUERY = `
 
 async function loadSchedule() {
   const { rows } = await pool.query(SCHEDULE_QUERY);
-  return rows;
+  const now = Date.now();
+  return rows.filter(event => isUpcoming(event, now));
 }
 
 const locationLabel = (s) => [s.venue, s.floor, s.room].filter(Boolean).join(' · ');
@@ -357,22 +360,29 @@ async function route(req, res, url) {
   const bingoMatch = BINGO_PATH.exec(url.pathname);
   if (bingoMatch) return handleBingo(req, res, user, bingoMatch);
 
+  if (['/static/venue-map.js', '/static/floor-plans.js'].includes(url.pathname)) {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
+    const source = await readFile(path.join(__dirname, path.basename(url.pathname)), 'utf8');
+    return send(res, 200, 'text/javascript; charset=utf-8', source, { 'cache-control': 'private, max-age=300' });
+  }
+
   if (url.pathname === '/api/sessions') {
     const sessions = await loadSchedule();
     return send(res, 200, 'application/json', JSON.stringify({ version, user: user.username, sessions }));
   }
   if (url.pathname === '/map') {
-    // TODO(integrated-map): Share structured map data and floor assets with the dashboard; preserve standalone location links.
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
     const { rows: [mapData] } = await pool.query(`
       SELECT
         (SELECT coalesce(json_agg(rooms ORDER BY id), '[]') FROM rooms) AS rooms,
         (SELECT coalesce(json_agg(location ORDER BY label), '[]') FROM (
-          SELECT id, concat_ws(' | ', venue, level, room) AS label,
+          SELECT id, venue, level, room, concat_ws(' | ', venue, level, room) AS label,
                  ARRAY(SELECT room_id FROM location_rooms WHERE location_id = locations.id ORDER BY room_id) AS room_ids
           FROM locations
         ) location) AS locations
     `);
+    mapData.events = await loadSchedule();
+    mapData.username = user.username;
     const map = await readFile(path.join(__dirname, 'map.html'), 'utf8');
     const data = JSON.stringify(mapData).replace(/</g, '\\u003c');
     return send(res, 200, 'text/html; charset=utf-8', ui.mapPage(map.replace('<!-- MAP_DATA -->', () => data), { team, version, user }));
@@ -388,6 +398,7 @@ async function route(req, res, url) {
       JOIN locations ON locations.id = sessions.location_id
       LEFT JOIN location_rooms ON location_rooms.location_id = locations.id
       LEFT JOIN rooms ON rooms.id = location_rooms.room_id
+      WHERE (days.event_date + sessions.end_time) AT TIME ZONE 'America/Denver' > CURRENT_TIMESTAMP
       GROUP BY sessions.id, days.id, locations.id
       ORDER BY days.event_date, sessions.start_time, sessions.id
     `);

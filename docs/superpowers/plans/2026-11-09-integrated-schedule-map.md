@@ -16,6 +16,7 @@
 - Floor identity includes venue. Compare against last top-down floor, not physical position.
 - Retain themed map placement, schedule filters/bookmarks/bingo, authentication and location links.
 - Generic off-site and unmapped indoor locations have explicit unavailable states.
+- User additions: verified OSM previews before off-site links; hide ended events using America/Denver end instants, retaining data and checking open views every 30 seconds.
 - Preserve untracked research CSV and do not deploy or merge this PR.
 
 ## Review Focus
@@ -31,10 +32,10 @@
 **Files:** New `app/venue-map.js`, `app/venue-map.test.js`.
 **Interfaces:** `resolveDestination(locationId, data)` returns `{kind, venue, rooms, links}`. `selectDestination(view, destination, direct)` returns `{mode, venue, floor}` without mutating the last top-down view. `mapLinks(location)` returns provider URLs only for a specific external destination.
 
-- [ ] Write tests for same/different floor, same-number venue switch, multi-room and multi-floor events, unknown IDs, indoor missing mappings, external and generic off-site labels, and nonmutation of current view.
-- [ ] Run `node --test app/venue-map.test.js`; expect missing-module failure initially.
-- [ ] Implement pure functions in a module exported to Node and the browser; no DOM work at import time.
-- [ ] Run focused tests; expect pass. Commit task.
+- [x] Write tests for same/different floor, same-number venue switch, multi-room and multi-floor events, unknown IDs, indoor missing mappings, external and generic off-site labels, and nonmutation of current view.
+- [x] Run `node --test app/venue-map.test.js`; expect missing-module failure initially.
+- [x] Implement pure functions in a module exported to Node and the browser; no DOM work at import time.
+- [x] Run focused tests; expect pass. Commit task.
 
 ### Task 2: PDF plans and shared top-down/stack renderer
 
