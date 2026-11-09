@@ -48,7 +48,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: es-credentials
-                  key: api_key
+                  key: key
                   optional: true
             # Demo fixtures are aggregate-only and visibly labeled; no fake cards.
             - name: BINGO_DEMO_RESULTS
