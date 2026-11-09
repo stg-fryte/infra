@@ -37,8 +37,11 @@
   t.addEventListener('keydown', e => {if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]; next.focus(); next.click();});
  });
  input.addEventListener('input', update); track.addEventListener('change', update);
- document.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => {
+ document.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', e => {
+  if(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
   mode = b.dataset.nav;
+  history.replaceState(null, '', mode === 'saved' ? '/?view=saved#sessions' : '/');
   document.querySelectorAll('[data-nav]').forEach(n => n.classList.toggle('active', n === b));
   document.querySelector('#schedule-heading').textContent = mode === 'saved' ? 'My schedule' : 'Explore the schedule';
   document.querySelector('#breadcrumb-current').textContent = mode === 'saved' ? 'My schedule' : 'Explore schedule';
@@ -73,4 +76,5 @@
  document.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
  dialog.addEventListener('click', e => {if (e.target === dialog) {const r = dialog.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dialog.close();}});
  update();
+ if(new URLSearchParams(location.search).get('view') === 'saved') document.querySelector('[data-nav="saved"]').click();
 })();
