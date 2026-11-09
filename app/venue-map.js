@@ -26,9 +26,9 @@
   const query = `${venue}, Salt Lake City, Utah`;
   return {google: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, apple: `https://maps.apple.com/?q=${encodeURIComponent(query)}`};
  }
- function resolveDestination(locationId, data) {
+ function resolveDestination(locationId, data, roomIds) {
   const location = data.locations.find(l => String(l.id) === String(locationId));
-  const rooms = location ? data.rooms.filter(r => location.room_ids.includes(r.id)) : [];
+  const rooms = location ? data.rooms.filter(r => (roomIds ?? location.room_ids).includes(r.id)) : [];
   const links = mapLinks(location);
   return {kind: rooms.length ? 'indoor' : links ? 'external' : 'unavailable', venue: location?.venue, location, rooms, links, preview:offsitePreview(location?.venue)};
  }
@@ -189,7 +189,7 @@
   function selectEvent(id, updateUrl = true) {
    selectedEvent = data.events.find(event=>String(event.id)===String(id));
    showDetails(selectedEvent);
-   destination = resolveDestination(selectedEvent?.location_id,data);
+   destination = resolveDestination(selectedEvent?.location_id,data,selectedEvent?.room_ids);
    eventPicker.value = selectedEvent?.id || '';
    if (!id) {showStack(view.venue); byId('show-destination').hidden = true;}
    else displayDestination();

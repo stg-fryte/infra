@@ -17,6 +17,13 @@ const data = {
 };
 const current = {venue: 'Salt Palace', floor: 2};
 
+test('event room assignments override shared location rooms, including an empty assignment', () => {
+ assert.deepEqual(resolveDestination(2, data, [4]).rooms.map(r => r.id), [4]);
+ assert.deepEqual(resolveDestination(2, data, [2]).rooms.map(r => r.id), [2]);
+ assert.equal(resolveDestination(2, data, []).kind, 'unavailable');
+ assert.deepEqual(resolveDestination(2, data).rooms.map(r => r.id), [2, 4]);
+});
+
 test('events disappear at their end instant while ongoing and future events remain', () => {
  const now = Date.parse('2026-11-09T16:00:00Z'); // 9 AM Mountain Standard Time.
  assert.equal(isUpcoming({ends_at:'2026-11-09T15:59:59Z'},now),false);
@@ -86,4 +93,11 @@ test('rendered schedule opens event details without interpreting event titles as
  assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
  assert.ok(!html.includes('<img src=x'));
  assert.match(html, /href="\/bingo\/42"/);
+ assert.ok(html.includes('session-bingo-action'));
+});
+
+test('room mapping links open the event assignment rather than its shared location', () => {
+ const html = require('./ui').roomMappings([{id:42,location_id:2,title:'Talk',day:'Monday',time:'09:00 AM',location:'Salt Palace | Level 2',resolved_rooms:'250A'}], {team:'test',version:'test',user:{username:'test'}});
+ assert.match(html, /href="\/map\?event=42"/);
+ assert.ok(!html.includes('/map?location=2'));
 });
