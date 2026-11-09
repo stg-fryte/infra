@@ -98,7 +98,7 @@ a.session-title em{font-style:normal;background:#f1e6ff;color:var(--purple-dark)
 .cloud-canvas .word-cloud{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:15px 23px;padding:34px 8px 28px;min-height:280px}
 .word-cloud .cloud-word{position:relative;display:inline-flex;align-items:baseline;font-family:Manrope,var(--font);font-size:var(--word-size);font-weight:750;line-height:1.2;letter-spacing:-.04em;color:var(--word-color);border-radius:5px;cursor:default;outline-offset:5px;max-width:100%;overflow-wrap:anywhere}
 .word-cloud .cloud-word>span:first-child{color:inherit;font-weight:inherit;overflow-wrap:anywhere}
-.word-cloud .cloud-lead{justify-content:center;flex-basis:100%;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:800;letter-spacing:-.055em;margin-bottom:7px}
+.word-cloud .cloud-lead{justify-content:center;flex-basis:100%;font-size:clamp(3.1rem,5vw,4.5rem);font-weight:800;letter-spacing:-.055em;margin-bottom:7px}
 .word-cloud .cloud-count{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);padding:6px 10px;border-radius:7px;background:#302340;color:white;font:600 13px var(--font);letter-spacing:0;white-space:nowrap;z-index:2;box-shadow:0 5px 18px #35214420;max-width:none}
 .cloud-count small{color:#d8c9e7;font-weight:400}
 .cloud-word:hover .cloud-count,.cloud-word:focus .cloud-count{display:block}
