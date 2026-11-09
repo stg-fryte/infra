@@ -77,6 +77,20 @@ function buzzwordPool(session) {
   return { fromTitle, fromTrack, generic: GENERIC_BUZZWORDS };
 }
 
+function expectedWords(session) {
+  const { fromTitle, fromTrack, generic } = buzzwordPool(session);
+  return uniqueBy([...fromTitle, ...fromTrack, ...generic])
+    .filter(word => normalize(word) !== 'free')
+    .map(word => ({ key: normalize(word), word }));
+}
+
+function bingoWindow(endsAt, now = Date.now()) {
+  const end = new Date(endsAt).getTime();
+  const close = end + 10 * 60 * 1000;
+  return { canStart: now < end, canEdit: now < close, final: now >= close,
+    closesAt: new Date(close).toISOString() };
+}
+
 function buildCard(session, random = Math.random) {
   const { fromTitle, fromTrack, generic } = buzzwordPool(session);
   const ranked = uniqueBy([
@@ -106,4 +120,4 @@ function winningLines(marked) {
 const isMarkableIndex = (index) =>
   Number.isInteger(index) && index >= 0 && index < CELL_COUNT && index !== FREE_INDEX;
 
-module.exports = { TRACK_BUZZWORDS, CELL_COUNT, FREE_INDEX, GRID_SIZE, buildCard, titleBuzzwords, isMarkableIndex, winningLines };
+module.exports = { TRACK_BUZZWORDS, CELL_COUNT, FREE_INDEX, GRID_SIZE, buildCard, titleBuzzwords, isMarkableIndex, winningLines, expectedWords, bingoWindow };

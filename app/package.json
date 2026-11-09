@@ -5,11 +5,16 @@
   "description": "Starter app for the Radar AI SRE track at the Cloud Native Hackathon",
   "main": "server.js",
   "scripts": {
+    "test": "node --test *.test.js",
     "start": "node server.js",
     "migrate:down": "node rollback.js"
   },
   "dependencies": {
     "@elastic/elasticsearch": "~9.5.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.301.1",
+    "@opentelemetry/exporter-prometheus": "^0.301.1",
+    "@opentelemetry/resources": "^3.1.1",
+    "@opentelemetry/sdk-metrics": "^3.1.1",
     "bootstrap": "^5.3.3",
     "pg": "^8.13.1"
   }
