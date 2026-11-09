@@ -73,3 +73,6 @@ the user explicitly requested browser configuration. This limits scripted cluste
 checks, so revision, image, ready replicas and public version were verified in UI.
 Ruling: exclude unknown content formats from synthetic data rather than treating
 all schedule rows as talks. An unsupported actual event may need a format added.
+Final PR review fixed a classification issue: all known substantive formats,
+including future keynotes and maintainer sessions, now remain in past-event history.
+Regression test failed before the fix; complete suite passed 43/43 afterward.

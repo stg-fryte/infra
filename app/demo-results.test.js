@@ -29,6 +29,13 @@ test('demo events exclude logistics, breaks and placeholder program entries',()=
   }
   assert.equal(isActualEvent({...event,format:'Registration'}),false);
   assert.equal(isActualEvent({...event,format:'Unknown'}),false);
+  for(const format of ['Keynote','End User Talk','Maintainer Track','10-Minute Tip Talk','Cloud Native Theater','ContribFest','Experience','Sponsored','Tour']) {
+    assert.equal(isActualEvent({...event,title:'A substantive scheduled session',format}),true,format);
+    assert.ok(demoResults({...event,title:'A substantive scheduled session',format}));
+  }
+  assert.equal(isActualEvent({...event,title:'Welcome + Opening Remarks',format:'Keynote'}),false);
+  assert.equal(isActualEvent({...event,title:'Closing Remarks',format:'Keynote'}),false);
+  assert.equal(isActualEvent({...event,title:'Solutions Showcase',format:'Expo'}),false);
   assert.equal(isActualEvent({...event,title:'CNCF Maintainer Summit',format:'Co-located (separate registration)'}),true);
   // The imported schedule incorrectly labels this named technical talk Break.
   assert.equal(isActualEvent({...event,title:'Rego Without Borders: Breaking Down Language Barriers for Security Policy',format:'Break'}),true);

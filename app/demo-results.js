@@ -2,9 +2,11 @@ const { createHash } = require('node:crypto');
 const { buildCard, expectedWords, FREE_INDEX } = require('./bingo');
 
 const CONTENT_FORMATS = new Set(['Talk','Lightning Talk','Workshop','Tutorial',
+  'Keynote','End User Talk','Maintainer Track','10-Minute Tip Talk','Cloud Native Theater',
+  'ContribFest','Experience','Sponsored','Tour',
   'Co-located (separate registration)','Sponsor-hosted Co-located','CNCF-hosted Co-located']);
 function isActualEvent(event) {
-  if (/registration|badge pick|coat.*check|coffee break|lunch|opening\s*\/\s*intro|lightning talk closing|project overview/i.test(event.title)) return false;
+  if (/registration|badge pick|coat.*check|coffee break|lunch|opening\s*\/\s*intro|lightning talk closing|project overview|opening remarks|^closing remarks$/i.test(event.title)) return false;
   // This named technical talk was misclassified as Break in the imported schedule.
   if (event.title === 'Rego Without Borders: Breaking Down Language Barriers for Security Policy') return true;
   return CONTENT_FORMATS.has(event.format);

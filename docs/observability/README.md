@@ -68,8 +68,9 @@ The fixed v1 seed makes repeated reads stable. Aggregate metrics remain under
 `bingo_*`; invented samples use separate `bingo_demo_*` instruments.
 
 In demo mode, history excludes registration, coat/bag checks, coffee/lunch breaks,
-opening/closing segments and generic project-overview placeholders. Only known
-content formats qualify. The named Rego technical talk is explicitly included
+opening/closing remarks, expo listings and generic project-overview placeholders.
+Known talks, keynotes, maintainer sessions, contribution sessions, scheduled
+experiences, sponsored demos and tours qualify. The named Rego technical talk is explicitly included
 despite its source schedule's erroneous Break format. Unsupported formats are
 conservatively excluded. Upcoming schedule behavior is unchanged.
 
