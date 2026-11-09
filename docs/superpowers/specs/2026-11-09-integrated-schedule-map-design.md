@@ -1,6 +1,12 @@
 # Integrated schedule and venue map
 
-Status: proposed design, awaiting approval before implementation.
+Status: approved; updated for the user's instruction to reuse main's themed map workbench.
+
+## Approved implementation adjustment
+
+Main now provides the themed map workbench. The user requested selecting an event, viewing its details, and showing its destination using that view. Preserve the dashboard and navigate event titles to `/map?event=ID`; use the workbench's left column for an event picker and details beside the map. No duplicate dashboard map or mobile modal is needed: the existing responsive map workbench becomes the details view. Preserve its visual theme and navigation. The same-floor and stacked-floor behavior remains as agreed. Keep current floor in tab session storage so returning from the schedule compares against the view the user last opened.
+
+Inspection confirmed all three Salt Palace levels are in the embedded brochure image. Crop those source regions, preserving PDF coordinates for room overlays, and use Leaflet's image-coordinate view for top-down pan/zoom. Pixel registration replaces the inaccurate schematic-to-street stretch; it does not change stored room data. The stacked view uses the same floor images and polygon coordinates. Named pins and schedule classification remain separate follow-up work.
 
 ## Intent and user decisions
 
