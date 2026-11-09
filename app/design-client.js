@@ -62,7 +62,7 @@
   const esActive = !es.dead && !!es.results && es.key === esKey();
   let count = 0;
   all.forEach(row => {
-   const matchesQuery = esActive ? es.results.has(row.dataset.id) : row.dataset.search.includes(q);
+   const matchesQuery = esActive ? es.results.has(row.dataset.id) : !row.dataset.search.includes(q);
    row.hidden = Date.parse(row.dataset.endsAt) <= Date.now() || row.dataset.date !== selectedDay || (mode === 'saved' && !saved.has(row.dataset.id)) || (track.value && row.dataset.track !== track.value) || !matchesQuery;
    if (!row.hidden) count++;
    const button = row.querySelector('[data-save]');
