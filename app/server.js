@@ -1,4 +1,5 @@
 const fs = require('node:fs');
+const ui = require('./ui');
 const http = require('node:http');
 const { readFile } = require('node:fs/promises');
 const path = require('node:path');
@@ -199,34 +200,7 @@ const page = (title, body) =>
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="${BOOTSTRAP_CSS_URL}"></head><body class="bg-body-tertiary">${body}</body></html>`;
 
 function authForm(kind, error) {
-  const isRegister = kind === 'register';
-  const heading = isRegister ? 'Create account' : 'Log in';
-  const other = isRegister ? '<a href="/login">Have an account? Log in</a>' : '<a href="/register">Need an account? Register</a>';
-  const note = error ? `<div class="alert alert-danger" role="alert">${escapeHtml(error)}</div>` : '';
-  const usernameHint = isRegister
-    ? '<div class="form-text">3-32 characters: a-z, 0-9, _ . -</div>'
-    : '';
-  const passwordHint = isRegister ? `<div class="form-text">At least ${PASSWORD_MIN} characters.</div>` : '';
-  const confirmField = isRegister
-    ? `<div class="mb-3"><label class="form-label" for="confirm">Confirm password</label>
-<input class="form-control" id="confirm" name="confirm" type="password" required autocomplete="new-password"></div>`
-    : '';
-  return page(
-    heading,
-    `<main class="container py-5" style="max-width:26rem">
-<h1 class="h3 text-center mb-4">${escapeHtml(team)}</h1>
-<div class="card shadow-sm"><div class="card-body p-4">
-<h2 class="h5 mb-3">${heading}</h2>${note}
-<form method="post" action="/${kind}">
-<div class="mb-3"><label class="form-label" for="username">Username</label>
-<input class="form-control" id="username" name="username" required autocomplete="username" autofocus>${usernameHint}</div>
-<div class="mb-3"><label class="form-label" for="password">Password</label>
-<input class="form-control" id="password" name="password" type="password" required autocomplete="${isRegister ? 'new-password' : 'current-password'}">${passwordHint}</div>
-${confirmField}
-<button class="btn btn-primary w-100">${heading}</button>
-</form></div></div>
-<p class="text-center mt-3">${other}</p></main>`,
-  );
+  return ui.authForm(kind, error, { team, passwordMin: PASSWORD_MIN });
 }
 
 async function handleRegister(req, res) {
@@ -460,29 +434,8 @@ async function route(req, res, url) {
 </main>`));
   }
   if (url.pathname === '/') {
-    const schedule = scheduleHtml(await loadSchedule());
-    return send(
-      res,
-      200,
-      'text/html; charset=utf-8',
-      page(
-        team,
-        `<nav class="navbar bg-body border-bottom"><div class="container">
-<span class="navbar-brand">${escapeHtml(team)}</span>
-<div class="d-flex align-items-center gap-3">
-<span class="text-body-secondary small">Signed in as <strong>${escapeHtml(user.username)}</strong></span>
-<form method="post" action="/logout" class="m-0"><button class="btn btn-outline-secondary btn-sm">Log out</button></form>
-</div></div></nav>
-<main class="container py-4">
-<h1 class="h4 mb-1">Schedule</h1>
-<p class="text-body-secondary small mb-0">KubeCon + CloudNativeCon NA 2026. Partial: Sunday through Tuesday midday.</p>
-${schedule}
-<p class="mt-4"><a href="/map">Explore the Salt Palace map</a></p>
-<p><a href=\"/event-rooms\">Verify event room mappings</a></p>
-<p class="text-body-secondary small">version ${escapeHtml(version)}</p>
-</main>`,
-      ),
-    );
+    const schedule = await loadSchedule();
+    return send(res, 200, 'text/html; charset=utf-8', ui.dashboard(schedule, { team, version, user }));
   }
   send(res, 404, 'text/plain', 'not found\n');
 }
