@@ -385,8 +385,8 @@ async function route(req, res, url) {
       FROM sessions
       JOIN days ON days.id = sessions.day_id
       JOIN locations ON locations.id = sessions.location_id
-      LEFT JOIN location_rooms ON location_rooms.location_id = locations.id
-      LEFT JOIN rooms ON rooms.id = location_rooms.room_id
+      LEFT JOIN session_rooms ON session_rooms.session_id = sessions.id
+      LEFT JOIN rooms ON rooms.id = session_rooms.room_id
       GROUP BY sessions.id, days.id, locations.id
       ORDER BY days.event_date, sessions.start_time, sessions.id
     `);
