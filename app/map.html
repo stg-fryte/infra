@@ -31,11 +31,13 @@ const mapData=JSON.parse(document.getElementById('map-data').textContent);
 const rooms=mapData.rooms.filter(room=>room.venue==='Salt Palace');
 const hotelRooms=mapData.rooms.filter(room=>room.venue==='Hyatt Regency');
 let mappedRoomIds=new Set();
+const mappedStyle={color:'#ce5200',fillOpacity:.4,weight:3};
+const roomStyle={color:'#237a96',fillOpacity:.16,weight:1.5};
+function restingStyle(room){
+ return mappedRoomIds.has(room.id) ? mappedStyle : roomStyle;
+}
 function drawRoom(room,group){
- const style=mappedRoomIds.has(room.id)
-  ? {color:'#ce5200',fillOpacity:.4,weight:3}
-  : {color:'#237a96',fillOpacity:.16,weight:1.5};
- const shape=L.geoJSON(room.boundary,style).addTo(group).bindTooltip(room.name);
+ const shape=L.geoJSON(room.boundary,restingStyle(room)).addTo(group).bindTooltip(room.name);
  shape.room=room;
  return shape;
 }
@@ -47,9 +49,9 @@ const layer=L.layerGroup().addTo(map);
 const floor=document.getElementById('floor'), selector=document.getElementById('room');
 let selected, drawing;
 function choose(room,shape,zoom=true){
- if(selected) selected.setStyle({color:'#237a96',fillOpacity:.16,weight:1.5});
+ if(selected) selected.setStyle(restingStyle(selected.room));
  selected=shape;
- shape.setStyle({color:'#ce5200',fillOpacity:.4,weight:3});
+ shape.setStyle(mappedStyle);
  selector.value=room.name;
  const center=shape.getBounds().getCenter();
  document.getElementById('detail').textContent=room.name+' · Floor '+room.floor+' · Estimated center '+center.lat.toFixed(5)+', '+center.lng.toFixed(5);
