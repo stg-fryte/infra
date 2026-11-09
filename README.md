@@ -1,6 +1,6 @@
-# Kube Companion — KubeCon NA 2026 (team `stg-fryte`)
+# Kube Companion — Cloud Native Hackathon 2026 (team `stg-fryte`)
 
-A companion web app for KubeCon NA 2026 (Las Vegas, Nov 8–12, Salt Palace), built
+A companion web app for the Cloud Native Hackathon (Salt Lake City, Nov 9, The Shop Workspace), built
 on the Radar AI SRE hackathon starter. It runs as a GitOps-deployed Node service in
 the team's hackathon cluster, with PostgreSQL as the system of record and optional
 Elasticsearch-backed search.
