@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const ui = require('./ui');
+const { validateProfile } = require('./profile');
 const http = require('node:http');
 const { readFile } = require('node:fs/promises');
 const path = require('node:path');
@@ -140,13 +141,13 @@ const hashToken = (token) => createHash('sha256').update(token).digest();
 const escapeHtml = (value) =>
   String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-function readForm(req) {
+function readForm(req, maxBytes = MAX_BODY_BYTES) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     req.on('data', (chunk) => {
       size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
+      if (size > maxBytes) {
         reject(new Error('body too large'));
         req.destroy();
         return;
@@ -175,7 +176,8 @@ async function currentUser(req) {
   const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
   if (!token) return null;
   const { rows } = await pool.query(
-    `SELECT u.id, u.username FROM user_sessions s JOIN users u ON u.id = s.user_id
+    `SELECT u.id, u.username, p.data AS profile FROM user_sessions s JOIN users u ON u.id = s.user_id
+     LEFT JOIN user_profiles p ON p.user_id = u.id
      WHERE s.token_hash = $1 AND s.expires_at > now()`,
     [hashToken(token)],
   );
@@ -193,7 +195,7 @@ async function startSession(userId) {
 }
 
 function send(res, status, contentType, body, headers = {}) {
-  res.writeHead(status, { 'content-type': contentType, ...headers });
+  res.writeHead(status, { 'content-type': contentType, ...(contentType.startsWith('text/html') ? { 'cache-control': 'private, no-store' } : {}), ...headers });
   res.end(body);
 }
 
@@ -352,6 +354,19 @@ async function route(req, res, url) {
       return send(res, 401, 'application/json', JSON.stringify({ error: 'unauthorized' }));
     }
     return send(res, 303, 'text/plain', '', { location: '/login' });
+  }
+
+  if (url.pathname === '/profile') {
+    if (req.method === 'GET') return send(res, 200, 'text/html; charset=utf-8', ui.profilePage({ team, version, user, saved: url.searchParams.get('saved') === '1' }));
+    if (req.method !== 'POST') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET, POST' });
+    if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) return send(res, 403, 'text/plain', 'Invalid request origin');
+    const form = await readForm(req, 1024 * 1024);
+    let profile;
+    try { profile = validateProfile(form); } catch (error) {
+      return send(res, 400, 'text/html; charset=utf-8', ui.profilePage({ team, version, user, error: error.message, draft: { ...Object.fromEntries(form), photo: user.profile?.photo || '', reduceMotion: form.get('reduceMotion') === 'on' } }));
+    }
+    await pool.query('INSERT INTO user_profiles (user_id, data) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()', [user.id, JSON.stringify(profile)]);
+    return send(res, 303, 'text/plain', '', { location: '/profile?saved=1' });
   }
 
   const bingoMatch = BINGO_PATH.exec(url.pathname);
