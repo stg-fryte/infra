@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const http = require('node:http');
+const { readFile } = require('node:fs/promises');
 const path = require('node:path');
 const { randomBytes, scryptSync, createHash, timingSafeEqual } = require('node:crypto');
 const { Pool } = require('pg');
@@ -241,6 +242,11 @@ async function route(req, res, url) {
   if (url.pathname === '/api/sessions') {
     return send(res, 200, 'application/json', JSON.stringify({ version, user: user.username, sessions }));
   }
+  if (url.pathname === '/map') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
+    const map = await readFile(path.join(__dirname, 'map.html'), 'utf8');
+    return send(res, 200, 'text/html; charset=utf-8', map);
+  }
   if (url.pathname === '/') {
     const rows = sessions.map((s) => `<li>${s.time} · ${s.room} · ${s.title}</li>`).join('');
     return send(
@@ -250,7 +256,7 @@ async function route(req, res, url) {
       page(
         team,
         `<h1>${escapeHtml(team)}</h1><p>version ${escapeHtml(version)} · signed in as ${escapeHtml(user.username)}</p>
-<form method="post" action="/logout"><button>Log out</button></form><ul>${rows}</ul>`,
+<form method="post" action="/logout"><button>Log out</button></form><p><a href="/map">Explore the Salt Palace map</a></p><ul>${rows}</ul>`,
       ),
     );
   }
