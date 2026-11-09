@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const ui = require('./ui');
-const { validateProfile } = require('./profile');
+const { isUpcoming } = require('./venue-map');
 const http = require('node:http');
 const { readFile } = require('node:fs/promises');
 const path = require('node:path');
@@ -34,6 +34,7 @@ const SCHEDULE_QUERY = `
          to_char(d.event_date, 'YYYY-MM-DD') AS date,
          to_char(s.start_time, 'HH24:MI') AS start_time,
          to_char(s.end_time, 'HH24:MI') AS end_time,
+         (d.event_date + s.end_time) AT TIME ZONE 'America/Denver' AS ends_at,
          s.title,
          t.name AS track,
          s.level,
@@ -42,6 +43,7 @@ const SCHEDULE_QUERY = `
          l.level AS floor,
          l.room,
          l.id AS location_id,
+         ARRAY(SELECT room_id FROM session_rooms WHERE session_id = s.id ORDER BY room_id) AS room_ids,
          s.notes,
          COALESCE(string_agg(sp.name, ', ' ORDER BY sp.name), '') AS speakers
   FROM sessions s
@@ -50,12 +52,14 @@ const SCHEDULE_QUERY = `
   LEFT JOIN tracks t ON t.id = s.track_id
   LEFT JOIN session_speakers ss ON ss.session_id = s.id
   LEFT JOIN speakers sp ON sp.id = ss.speaker_id
+  WHERE NOT s.hidden
   GROUP BY s.id, d.id, t.id, l.id
   ORDER BY d.event_date, s.start_time, s.end_time, s.id`;
 
 async function loadSchedule() {
   const { rows } = await pool.query(SCHEDULE_QUERY);
-  return rows;
+  const now = Date.now();
+  return rows.filter(event => isUpcoming(event, now));
 }
 
 const locationLabel = (s) => [s.venue, s.floor, s.room].filter(Boolean).join(' · ');
@@ -263,7 +267,7 @@ async function loadBingoSession(sessionId) {
      LEFT JOIN tracks t ON t.id = s.track_id
      LEFT JOIN session_prizes p ON p.session_id = s.id
      LEFT JOIN users w ON w.id = p.winner_user_id
-     WHERE s.id = $1`,
+     WHERE s.id = $1 AND NOT s.hidden`,
     [sessionId],
   );
   return rows[0] || null;
@@ -326,6 +330,52 @@ async function handleBingo(req, res, user, match) {
   return send(res, 200, 'text/html; charset=utf-8', bingoHtml(user, session, card));
 }
 
+const SAVED_PATH = /^\/api\/saved(?:\/(\d{1,9}))?$/;
+
+async function loadSavedIds(userId) {
+  const { rows } = await pool.query(
+    'SELECT session_id FROM saved_sessions WHERE user_id = $1 ORDER BY session_id',
+    [userId],
+  );
+  return rows.map((row) => row.session_id);
+}
+
+async function handleSaved(req, res, user, match) {
+  const json = (status, body) => send(res, status, 'application/json', JSON.stringify(body));
+  const sessionId = match[1] ? Number(match[1]) : null;
+  if (sessionId === null) {
+    if (req.method === 'GET') return json(200, { ids: await loadSavedIds(user.id) });
+    if (req.method !== 'POST') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET, POST' });
+    const ids = (await readForm(req)).get('ids')?.split(',').map(Number).filter(Number.isInteger) ?? [];
+    await pool.query(
+      `INSERT INTO saved_sessions (user_id, session_id)
+       SELECT $1, id FROM sessions WHERE id = ANY($2::int[])
+       ON CONFLICT DO NOTHING`,
+      [user.id, ids],
+    );
+    return json(200, { ids: await loadSavedIds(user.id) });
+  }
+  if (req.method === 'PUT') {
+    const { rows } = await pool.query(
+      `WITH existing AS (SELECT id FROM sessions WHERE id = $2),
+            inserted AS (
+              INSERT INTO saved_sessions (user_id, session_id)
+              SELECT $1, id FROM existing
+              ON CONFLICT DO NOTHING
+            )
+       SELECT id FROM existing`,
+      [user.id, sessionId],
+    );
+    if (rows.length === 0) return json(404, { error: 'not found' });
+    return json(200, { id: sessionId, saved: true });
+  }
+  if (req.method === 'DELETE') {
+    await pool.query('DELETE FROM saved_sessions WHERE user_id = $1 AND session_id = $2', [user.id, sessionId]);
+    return json(200, { id: sessionId, saved: false });
+  }
+  return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'PUT, DELETE' });
+}
+
 async function route(req, res, url) {
   if (url.pathname === '/healthz') return send(res, 200, 'text/plain', 'ok\n');
   if (url.pathname === BOOTSTRAP_CSS_URL && req.method === 'GET') {
@@ -372,6 +422,15 @@ async function route(req, res, url) {
   const bingoMatch = BINGO_PATH.exec(url.pathname);
   if (bingoMatch) return handleBingo(req, res, user, bingoMatch);
 
+  if (['/static/venue-map.js', '/static/floor-plans.js'].includes(url.pathname)) {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
+    const source = await readFile(path.join(__dirname, path.basename(url.pathname)), 'utf8');
+    return send(res, 200, 'text/javascript; charset=utf-8', source, { 'cache-control': 'private, max-age=300' });
+  }
+
+  const savedMatch = SAVED_PATH.exec(url.pathname);
+  if (savedMatch) return handleSaved(req, res, user, savedMatch);
+
   if (url.pathname === '/api/sessions') {
     const sessions = await loadSchedule();
     return send(res, 200, 'application/json', JSON.stringify({ version, user: user.username, sessions }));
@@ -382,11 +441,13 @@ async function route(req, res, url) {
       SELECT
         (SELECT coalesce(json_agg(rooms ORDER BY id), '[]') FROM rooms) AS rooms,
         (SELECT coalesce(json_agg(location ORDER BY label), '[]') FROM (
-          SELECT id, concat_ws(' | ', venue, level, room) AS label,
+          SELECT id, venue, level, room, concat_ws(' | ', venue, level, room) AS label,
                  ARRAY(SELECT room_id FROM location_rooms WHERE location_id = locations.id ORDER BY room_id) AS room_ids
           FROM locations
         ) location) AS locations
     `);
+    mapData.events = await loadSchedule();
+    mapData.username = user.username;
     const map = await readFile(path.join(__dirname, 'map.html'), 'utf8');
     const data = JSON.stringify(mapData).replace(/</g, '\\u003c');
     return send(res, 200, 'text/html; charset=utf-8', ui.mapPage(map.replace('<!-- MAP_DATA -->', () => data), { team, version, user }));
@@ -395,13 +456,15 @@ async function route(req, res, url) {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
     const { rows } = await pool.query(`
       SELECT days.label AS day, to_char(sessions.start_time, 'HH12:MI AM') AS time,
-             sessions.title, locations.id AS location_id, concat_ws(' | ', locations.venue, locations.level, locations.room) AS location,
+             sessions.id, sessions.title, locations.id AS location_id, concat_ws(' | ', locations.venue, locations.level, locations.room) AS location,
              string_agg(rooms.name, ', ' ORDER BY rooms.name) AS resolved_rooms
       FROM sessions
       JOIN days ON days.id = sessions.day_id
       JOIN locations ON locations.id = sessions.location_id
       LEFT JOIN session_rooms ON session_rooms.session_id = sessions.id
       LEFT JOIN rooms ON rooms.id = session_rooms.room_id
+      WHERE (days.event_date + sessions.end_time) AT TIME ZONE 'America/Denver' > CURRENT_TIMESTAMP
+        AND NOT sessions.hidden
       GROUP BY sessions.id, days.id, locations.id
       ORDER BY days.event_date, sessions.start_time, sessions.id
     `);
@@ -409,7 +472,8 @@ async function route(req, res, url) {
   }
   if (url.pathname === '/') {
     const schedule = await loadSchedule();
-    return send(res, 200, 'text/html; charset=utf-8', ui.dashboard(schedule, { team, version, user }));
+    const savedIds = await loadSavedIds(user.id);
+    return send(res, 200, 'text/html; charset=utf-8', ui.dashboard(schedule, { team, version, user, savedIds }));
   }
   send(res, 404, 'text/plain', 'not found\n');
 }
