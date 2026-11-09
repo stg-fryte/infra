@@ -6,13 +6,33 @@
  const input = document.querySelector('#session-search');
  const track = document.querySelector('#track-filter');
  const storageKey = 'kube-companion-saved:' + shell.dataset.user;
+ const viewKey = 'kube-companion-view:' + shell.dataset.user;
  let saved = new Set();
  try { const parsed = JSON.parse(localStorage.getItem(storageKey) || '[]'); if (Array.isArray(parsed)) saved = new Set(parsed.map(String)); } catch {}
  let selectedDay = (tabs.find(t => t.getAttribute('aria-selected') === 'true') || tabs[0])?.dataset.day;
  let mode = 'explore';
+ try {
+  const view = JSON.parse(sessionStorage.getItem(viewKey));
+  if (view && typeof view === 'object') {
+   if (tabs.some(t => t.dataset.day === view.day)) selectedDay = view.day;
+   if (view.mode === 'saved') mode = 'saved';
+   if (typeof view.search === 'string') input.value = view.search;
+   if ([...track.options].some(option => option.value === view.track)) track.value = view.track;
+   document.querySelector('#session-list').classList.toggle('compact', view.compact === true);
+  }
+ } catch {}
  let toastTimer;
  function notify(message) {const toast = document.querySelector('.toast'); toast.textContent = message; toast.classList.add('visible'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('visible'), 2600);}
  function update() {
+  const compact = document.querySelector('#session-list').classList.contains('compact');
+  document.querySelectorAll('[data-nav]').forEach(n => n.classList.toggle('active', n.dataset.nav === mode));
+  document.querySelector('#schedule-heading').textContent = mode === 'saved' ? 'My schedule' : 'Explore the schedule';
+  document.querySelector('#breadcrumb-current').textContent = mode === 'saved' ? 'My schedule' : 'Explore schedule';
+  document.querySelectorAll('[data-view]').forEach(n => {
+   const active = (n.dataset.view === 'compact') === compact;
+   n.classList.toggle('selected', active); n.setAttribute('aria-pressed', String(active));
+  });
+  try {sessionStorage.setItem(viewKey, JSON.stringify({day:selectedDay, mode, search:input.value, track:track.value, compact}));} catch {}
   let count = 0;
   all.forEach(row => {
    row.hidden = Date.parse(row.dataset.endsAt) <= Date.now() || row.dataset.date !== selectedDay || (mode === 'saved' && !saved.has(row.dataset.id)) || (track.value && row.dataset.track !== track.value) || !row.dataset.search.includes(input.value.trim().toLowerCase());
@@ -38,9 +58,6 @@
  input.addEventListener('input', update); track.addEventListener('change', update);
  document.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => {
   mode = b.dataset.nav;
-  document.querySelectorAll('[data-nav]').forEach(n => n.classList.toggle('active', n === b));
-  document.querySelector('#schedule-heading').textContent = mode === 'saved' ? 'My schedule' : 'Explore the schedule';
-  document.querySelector('#breadcrumb-current').textContent = mode === 'saved' ? 'My schedule' : 'Explore schedule';
   if (mode === 'saved') {const first = all.find(r => saved.has(r.dataset.id) && Date.parse(r.dataset.endsAt) > Date.now()); if (first) selectedDay = first.dataset.date;}
   update(); document.querySelector('#sessions').scrollIntoView({behavior:'smooth', block:'start'});
  }));
@@ -53,7 +70,7 @@
  }));
  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
   document.querySelector('#session-list').classList.toggle('compact', b.dataset.view === 'compact');
-  document.querySelectorAll('[data-view]').forEach(n => {n.classList.toggle('selected', n === b); n.setAttribute('aria-pressed', String(n === b));});
+  update();
  }));
  document.querySelector('#reset-filters').addEventListener('click', () => {input.value = ''; track.value = ''; update();});
  document.querySelector('#jump-sessions').addEventListener('click', () => {document.querySelector('#sessions').scrollIntoView({behavior:'smooth'}); input.focus({preventScroll:true});});

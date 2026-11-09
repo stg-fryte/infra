@@ -42,19 +42,19 @@
 **Files:** New `app/floor-plans.js`; modify `app/venue-map.js`, `app/venue-map.test.js`, `app/map.html`, `app/design.css`.
 **Interfaces:** `FloorPlans.get(venue, floor)` returns image data, size and `points(room)` in PDF image coordinates. `VenueMap.mount(data)` binds the workbench controls and manages selection, session view persistence and rendering.
 
-- [ ] Add coordinate tests using literal known image landmarks and an unsupported-room case; initially fail.
-- [ ] Extract existing image constants into the registry. Crop Salt Palace floor regions, normalize their drawing frames, and register rooms by known source coordinates. Reuse Hyatt crop/registration data. Do not manufacture missing floor plans.
-- [ ] Use one Leaflet image-coordinate map with PDF image overlays. Build tilted SVG image/polygon floor buttons from the same registry; render only selected rooms. Handle load failures and stale async completions explicitly.
-- [ ] Add venue/floor/overview controls, fit action, visible floor labels and reduced-motion handling. Keep the last top-down view in session storage with validation.
-- [ ] Run focused tests and visually check each venue/floor using real room data. Commit task.
+- [x] Add coordinate tests using literal known image landmarks and an unsupported-room case; initially fail.
+- [x] Extract existing image constants into the registry. Crop Salt Palace floor regions, normalize their drawing frames, and register rooms by known source coordinates. Reuse Hyatt crop/registration data. Do not manufacture missing floor plans.
+- [x] Use one Leaflet image-coordinate map with PDF image overlays. Build tilted SVG image/polygon floor buttons from the same registry; render only selected rooms. Handle load failures and stale async completions explicitly.
+- [x] Add venue/floor/overview controls, fit action, visible floor labels and reduced-motion handling. Keep the last top-down view in session storage with validation.
+- [x] Run focused tests and visually check each venue/floor using real room data. Commit task.
 
 ### Task 3: Event-details integration and final verification
 
 **Files:** `app/server.js`, `app/ui.js`, `app/design-client.js`, `app/design.css`, `app/map.html`, `app/venue-map.test.js`.
 **Interfaces:** `/map?event=ID` receives schedule plus map data; event picker changes selection in place and updates URL; `/map?location=ID` opens that destination top-down. Server serves exact shared script paths.
 
-- [ ] Add rendered-output tests that event titles link to map details and user content is escaped.
-- [ ] Preserve the current themed workbench; replace old controls with event picker, event details and manual venue/floor controls. Remove runtime script-string rewriting and old duplicate map script. Keep standard page navigation.
-- [ ] Show event title, time, speakers, notes and bingo action beside map. External events show Google/Apple links; unknown IDs and missing room mappings show honest statuses and no stale overlay.
-- [ ] Run `node --test app/*.test.js`; expect all pass. Exercise authenticated local routes and desktop/mobile using browser with actual database data.
-- [ ] Review full branch independently, resolve substantive findings, update PR #7 and mark ready only after validation. Do not merge/deploy.
+- [x] Add rendered-output tests that event titles link to map details and user content is escaped.
+- [x] Preserve the current themed workbench; replace old controls with event picker, event details and manual venue/floor controls. Remove runtime script-string rewriting and old duplicate map script. Keep standard page navigation.
+- [x] Show event title, time, speakers, notes and bingo action beside map. External events show Google/Apple links; unknown IDs and missing room mappings show honest statuses and no stale overlay.
+- [x] Run `node --test app/*.test.js`; expect all pass. Exercise authenticated local routes and desktop/mobile using browser with actual database data.
+- [x] Review full branch independently, resolve substantive findings, update PR #7 and mark ready only after validation. Do not merge/deploy.
