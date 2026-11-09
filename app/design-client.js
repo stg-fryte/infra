@@ -3,7 +3,29 @@
  if (!shell) return;
  const all = [...document.querySelectorAll('.session')];
  const tabs = [...document.querySelectorAll('[data-day]')];
- // TODO(schedule-completion): Scroll the day strip with controls; reveal selected tabs after restore/keyboard navigation and respect reduced motion.
+ const dayStrip = document.querySelector('#day-tabs');
+ const dayScrollButtons = [...document.querySelectorAll('[data-day-scroll]')];
+ const scrollBehavior = () => document.documentElement.dataset.reduceMotion === 'true' || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth';
+ function updateDayScroll() {
+  const max = dayStrip.scrollWidth - dayStrip.clientWidth;
+  dayScrollButtons.forEach(button => {
+   button.disabled = Number(button.dataset.dayScroll) < 0 ? dayStrip.scrollLeft <= 1 : dayStrip.scrollLeft >= max - 1;
+  });
+ }
+ function revealDay(behavior = scrollBehavior()) {
+  const tab = tabs.find(t => t.dataset.day === selectedDay);
+  if (!tab) return;
+  const stripBox = dayStrip.getBoundingClientRect();
+  const tabBox = tab.getBoundingClientRect();
+  const offset = tabBox.left < stripBox.left ? tabBox.left-stripBox.left : tabBox.right > stripBox.right ? tabBox.right-stripBox.right : 0;
+  if (offset) dayStrip.scrollBy({left:offset, behavior});
+  updateDayScroll();
+ }
+ dayScrollButtons.forEach(button => button.addEventListener('click', () => {
+  dayStrip.scrollBy({left:Number(button.dataset.dayScroll)*dayStrip.clientWidth*.8, behavior:scrollBehavior()});
+ }));
+ dayStrip.addEventListener('scroll', updateDayScroll, {passive:true});
+ new ResizeObserver(() => revealDay('instant')).observe(dayStrip);
  const input = document.querySelector('#session-search');
  const track = document.querySelector('#track-filter');
  const storageKey = 'kube-companion-saved:' + shell.dataset.user;
@@ -53,7 +75,7 @@
   document.querySelector('#day-label').textContent = Number.isNaN(date.getTime()) ? 'Sessions' : date.toLocaleDateString('en-US', {weekday:'long', month:'long',day:'numeric'});
  }
  tabs.forEach((t, i) => {
-  t.addEventListener('click', () => {selectedDay = t.dataset.day; update();});
+  t.addEventListener('click', () => {selectedDay = t.dataset.day; update(); revealDay();});
   t.addEventListener('keydown', e => {if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]; next.focus(); next.click();});
  });
  input.addEventListener('input', update); track.addEventListener('change', update);
@@ -62,7 +84,7 @@
   e.preventDefault();
   mode = b.dataset.nav;
   if (mode === 'saved') {const first = all.find(r => saved.has(r.dataset.id) && Date.parse(r.dataset.endsAt) > Date.now()); if (first) selectedDay = first.dataset.date;}
-  update(); document.querySelector('#sessions').scrollIntoView({behavior:'smooth', block:'start'});
+  update(); revealDay(); document.querySelector('#sessions').scrollIntoView({behavior:'smooth', block:'start'});
  }));
  document.querySelectorAll('[data-save]').forEach(b => b.addEventListener('click', async () => {
   const id = b.closest('.session').dataset.id;
@@ -101,5 +123,6 @@
  document.querySelector('#jump-sessions').addEventListener('click', () => {document.querySelector('#sessions').scrollIntoView({behavior:'smooth'}); input.focus({preventScroll:true});});
  document.addEventListener('keydown', e => {if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {e.preventDefault(); input.focus();}});
  update();
+ revealDay('instant');
  setInterval(update, 30000);
 })();

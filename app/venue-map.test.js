@@ -117,4 +117,23 @@ test('room mapping links open the event assignment rather than its shared locati
  assert.match(html, /href="\/map\?event=42"/);
  assert.ok(!html.includes('/map?location=2'));
 });
-// TODO(schedule-completion): Verify new event destinations and hall-level versus exact room/meeting-point accuracy.
+test('new outdoor destinations use organizer map coordinates and name their precision', () => {
+ assert.deepEqual(offsitePreview('Edison House, 335 S 200 W').center,[40.7617511,-111.8963346]);
+ const lobby = resolveDestination(20,{rooms:[],locations:[{id:20,venue:'Hyatt Regency Lobby',room_ids:[]}]});
+ assert.equal(lobby.kind,'external');
+ assert.deepEqual(lobby.preview.center,[40.7656411,-111.8943473]);
+ assert.match(lobby.preview.label,/building pin/i);
+ assert.match(lobby.preview.label,/lobby/i);
+ assert.equal(offsitePreview('Hyatt Regency'),null);
+});
+
+test('foyer and mezzanine area pins stay on their own floor drawings', () => {
+ const plans = require('./floor-plans');
+ const foyer = {venue:'Salt Palace',floor:1,name:'North Grand Ballroom Foyer',boundary:{type:'Point',coordinates:[-111.895,40.767]}};
+ const mezzanine = {...foyer,floor:2,name:'Upper Mezzanine'};
+ assert.deepEqual(plans.get('Salt Palace',1).points(foyer),[[395,850]]);
+ assert.deepEqual(plans.get('Salt Palace',2).points(mezzanine),[[911,480]]);
+ assert.equal(plans.get('Salt Palace',1).points(mezzanine),null);
+ assert.equal(plans.get('Salt Palace',2).points(foyer),null);
+ assert.ok(plans.svg(plans.get('Salt Palace',2),[mezzanine]).includes('<circle '));
+});

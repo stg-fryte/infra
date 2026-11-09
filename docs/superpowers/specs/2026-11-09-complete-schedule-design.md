@@ -1,6 +1,6 @@
 # Complete the conference schedule and scroll the day selector
 
-Status: proposed; awaiting user approval. This draft contains edit markers only.
+Status: approved November 9 and implemented locally. The user will verify locally before further PR work. Implementation has not been pushed.
 
 ## Intent and evidence
 
@@ -20,7 +20,7 @@ Use native horizontal overflow for touch/trackpad sliding, plus accessible previ
 - Runtime schedule synchronization would keep data fresher but adds network dependency, recurring jobs, and reconciliation beyond this request.
 - A custom carousel or swipe-to-change-day gesture adds gesture handling and can conflict with page scrolling. Native strip scrolling matches sliding within the selector with less code.
 
-These are proposed choices, not previously approved decisions.
+The user approved the additive migration, native day scrolling, missing mappings, and hall-level locations for posters/demos without exact booth positions.
 
 ## Data integrity
 
