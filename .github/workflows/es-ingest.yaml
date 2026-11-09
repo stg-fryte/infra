@@ -1,0 +1,78 @@
+# On demand (Actions > es-ingest > Run workflow): mirror the Postgres
+# schedule into the team's Elasticsearch project (the `sessions` alias).
+#
+# Runs the ingest as a one-off Job INSIDE the cluster, so it reaches
+# db-rw directly (no port-forward) and egresses to ES on its own. Both
+# credentials come from the existing Secrets via secretKeyRef, so no
+# literal lands in the Job spec or the repo. The Job is unique-named per
+# run and TTLs itself out, so it is not a resource Argo CD reconciles;
+# its manifest template lives in .github/jobs/es-ingest.yaml.
+#
+# One-time setup: repo secret KUBECONFIG = base64 of the cluster
+# kubeconfig (README, "kubectl"). That token is rotated about every 12h,
+# so refresh the secret if a run fails with Unauthorized.
+#
+# To also re-sync the index automatically on every deploy, add:
+#   on:
+#     push:
+#       branches: [main]
+name: es-ingest
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: es-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    # Only in your copy: the template repo itself keeps its placeholders.
+    if: github.repository != 'skyhook-io/cnh-starter'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      KUBECONFIG: ${{ github.workspace }}/cnh-kubeconfig
+      NAMESPACE: team-stg-fryte
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore the cluster kubeconfig
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG }}
+        run: |
+          if [ -z "$KUBECONFIG_B64" ]; then
+            echo "Set the KUBECONFIG repo secret: base64 of the cluster kubeconfig (README, kubectl)." >&2
+            exit 1
+          fi
+          echo "$KUBECONFIG_B64" | base64 -d > "$KUBECONFIG"
+          chmod 600 "$KUBECONFIG"
+          kubectl -n "$NAMESPACE" get pods --no-headers | head -1
+
+      - name: Resolve the deployed image tag
+        id: tag
+        run: |
+          tag=$(yq -r '.images[] | select(.name == "app") | .newTag' deploy/kustomization.yaml)
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Run the ingest as a one-off Job
+        env:
+          IMAGE: ${{ steps.tag.outputs.image }}
+        run: |
+          set -euo pipefail
+          name="es-ingest-$(date -u +%Y%m%d%H%M%S)"
+          echo "INGEST_JOB=$name" >> "$GITHUB_ENV"
+          sed -e "s|__JOB_NAME__|${name}|" -e "s|__IMAGE__|${IMAGE}|" .github/jobs/es-ingest.yaml \
+            | kubectl -n "$NAMESPACE" apply -f -
+          echo "Created Job ${name}; waiting for completion."
+          kubectl -n "$NAMESPACE" wait --for=condition=complete "job/${name}" --timeout=300s
+
+      - name: Show ingest logs
+        if: always()
+        run: |
+          if [ -n "${INGEST_JOB:-}" ]; then
+            kubectl -n "$NAMESPACE" logs "job/${INGEST_JOB}" --tail=100 || true
+          fi
