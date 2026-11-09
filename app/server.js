@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const ui = require('./ui');
+const sponsorsUi = require('./sponsors-ui');
 const { isUpcoming } = require('./venue-map');
 const http = require('node:http');
 const { readFile } = require('node:fs/promises');
@@ -339,6 +340,12 @@ async function route(req, res, url) {
   if (url.pathname === '/privacy' && req.method === 'GET') {
     return send(res, 200, 'text/html; charset=utf-8', resultsUi.privacyPage({ team, version, user: await currentUser(req) }));
   }
+  const sponsorAsset = /^\/static\/sponsors\/(sonar|dash0|radar|elasticsearch)\.svg$/.exec(url.pathname);
+  if (sponsorAsset) {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', {allow: 'GET'});
+    const logo = await readFile(path.join(__dirname, 'assets', 'sponsors', sponsorAsset[1] + '.svg'));
+    return send(res, 200, 'image/svg+xml', logo, {'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff'});
+  }
   if (url.pathname === BOOTSTRAP_CSS_URL && req.method === 'GET') {
     return send(res, 200, 'text/css; charset=utf-8', bootstrapCss, { 'cache-control': 'public, max-age=86400' });
   }
@@ -382,6 +389,11 @@ async function route(req, res, url) {
 
   const bingoMatch = BINGO_PATH.exec(url.pathname);
   if (bingoMatch) return handleBingo(req, res, user, bingoMatch);
+
+  if (url.pathname === '/sponsors') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', {allow: 'GET'});
+    return send(res, 200, 'text/html; charset=utf-8', sponsorsUi.render({team,version,user},ui));
+  }
 
   if (url.pathname === '/history') {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
