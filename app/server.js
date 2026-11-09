@@ -314,8 +314,47 @@ async function route(req, res, url) {
   }
   if (url.pathname === '/map') {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
+    const { rows: [mapData] } = await pool.query(`
+      SELECT
+        (SELECT coalesce(json_agg(rooms ORDER BY id), '[]') FROM rooms) AS rooms,
+        (SELECT coalesce(json_agg(location ORDER BY label), '[]') FROM (
+          SELECT concat_ws(' | ', venue, level, room) AS label,
+                 ARRAY(SELECT room_id FROM location_rooms WHERE location_id = locations.id ORDER BY room_id) AS room_ids
+          FROM locations
+        ) location) AS locations
+    `);
     const map = await readFile(path.join(__dirname, 'map.html'), 'utf8');
-    return send(res, 200, 'text/html; charset=utf-8', map);
+    const data = JSON.stringify(mapData).replace(/</g, '\\u003c');
+    return send(res, 200, 'text/html; charset=utf-8', map.replace('<!-- MAP_DATA -->', () => data));
+  }
+  if (url.pathname === '/event-rooms') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
+    const { rows } = await pool.query(`
+      SELECT days.label AS day, to_char(sessions.start_time, 'HH12:MI AM') AS time,
+             sessions.title, concat_ws(' | ', locations.venue, locations.level, locations.room) AS location,
+             string_agg(rooms.name, ', ' ORDER BY rooms.name) AS resolved_rooms
+      FROM sessions
+      JOIN days ON days.id = sessions.day_id
+      JOIN locations ON locations.id = sessions.location_id
+      LEFT JOIN location_rooms ON location_rooms.location_id = locations.id
+      LEFT JOIN rooms ON rooms.id = location_rooms.room_id
+      GROUP BY sessions.id, days.id, locations.id
+      ORDER BY days.event_date, sessions.start_time, sessions.id
+    `);
+    const eventRows = rows.map((event) => {
+      const cells = [event.day, event.time.trimStart(), event.title, event.location,
+        event.resolved_rooms ?? 'No room mapped'];
+      return `<tr>${cells.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`;
+    }).join('');
+    return send(res, 200, 'text/html; charset=utf-8', page('Event room mappings', `
+<main class="container py-4">
+<p><a href="/">Back to schedule</a></p>
+<h1 class="h4">Event room mappings</h1>
+<p>${rows.filter((event) => event.resolved_rooms !== null).length} of ${rows.length} events have mapped rooms.</p>
+<div class="table-responsive"><table class="table table-hover">
+<thead><tr><th>Day</th><th>Start</th><th>Event</th><th>Schedule location</th><th>Resolved rooms</th></tr></thead>
+<tbody>${eventRows}</tbody></table></div>
+</main>`));
   }
   if (url.pathname === '/') {
     const schedule = scheduleHtml(await loadSchedule());
@@ -336,6 +375,7 @@ async function route(req, res, url) {
 <p class="text-body-secondary small mb-0">KubeCon + CloudNativeCon NA 2026. Partial: Sunday through Tuesday midday.</p>
 ${schedule}
 <p class="mt-4"><a href="/map">Explore the Salt Palace map</a></p>
+<p><a href=\"/event-rooms\">Verify event room mappings</a></p>
 <p class="text-body-secondary small">version ${escapeHtml(version)}</p>
 </main>`,
       ),
