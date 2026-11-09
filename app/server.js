@@ -8,6 +8,8 @@ const { randomBytes, scryptSync, createHash, timingSafeEqual } = require('node:c
 const { Pool } = require('pg');
 const { MIGRATIONS_DIR, MIGRATION_FILE, MIGRATION_LOCK_KEY } = require('./migrationConfig');
 const { GRID_SIZE, FREE_INDEX, buildCard, isMarkableIndex, winningLines } = require('./bingo');
+const { SCHEDULE_QUERY } = require('./scheduleQuery');
+const { searchSessions, suggestTitles, SearchUnavailable } = require('./sessionsSearch');
 
 const port = Number(process.env.PORT || 8080);
 const team = process.env.TEAM_NAME || 'your-team';
@@ -27,34 +29,6 @@ const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 128;
 const BOOTSTRAP_CSS_URL = '/static/bootstrap.min.css';
 const bootstrapCss = fs.readFileSync(require.resolve('bootstrap/dist/css/bootstrap.min.css'));
-
-const SCHEDULE_QUERY = `
-  SELECT s.id,
-         d.label AS day,
-         to_char(d.event_date, 'YYYY-MM-DD') AS date,
-         to_char(s.start_time, 'HH24:MI') AS start_time,
-         to_char(s.end_time, 'HH24:MI') AS end_time,
-         (d.event_date + s.end_time) AT TIME ZONE 'America/Denver' AS ends_at,
-         s.title,
-         t.name AS track,
-         s.level,
-         s.format,
-         l.venue,
-         l.level AS floor,
-         l.room,
-         l.id AS location_id,
-         ARRAY(SELECT room_id FROM session_rooms WHERE session_id = s.id ORDER BY room_id) AS room_ids,
-         s.notes,
-         COALESCE(string_agg(sp.name, ', ' ORDER BY sp.name), '') AS speakers
-  FROM sessions s
-  JOIN days d ON d.id = s.day_id
-  JOIN locations l ON l.id = s.location_id
-  LEFT JOIN tracks t ON t.id = s.track_id
-  LEFT JOIN session_speakers ss ON ss.session_id = s.id
-  LEFT JOIN speakers sp ON sp.id = ss.speaker_id
-  WHERE NOT s.hidden
-  GROUP BY s.id, d.id, t.id, l.id
-  ORDER BY d.event_date, s.start_time, s.end_time, s.id`;
 
 async function loadSchedule() {
   const { rows } = await pool.query(SCHEDULE_QUERY);
@@ -434,6 +408,31 @@ async function route(req, res, url) {
   if (url.pathname === '/api/sessions') {
     const sessions = await loadSchedule();
     return send(res, 200, 'application/json', JSON.stringify({ version, user: user.username, sessions }));
+  }
+  if (url.pathname === '/api/search' || url.pathname === '/api/suggest') {
+    if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });
+    const params = url.searchParams;
+    try {
+      if (url.pathname === '/api/suggest') {
+        const prefix = (params.get('q') || '').trim();
+        if (!prefix) return send(res, 200, 'application/json', JSON.stringify({ suggestions: [] }));
+        const suggestions = await suggestTitles(prefix);
+        return send(res, 200, 'application/json', JSON.stringify({ suggestions }));
+      }
+      const result = await searchSessions({
+        q: (params.get('q') || '').trim(),
+        day: params.get('day'),
+        track: params.get('track'),
+        level: params.get('level'),
+        size: Math.min(Number(params.get('size')) || 50, 200),
+      });
+      return send(res, 200, 'application/json', JSON.stringify(result));
+    } catch (error) {
+      if (error instanceof SearchUnavailable) {
+        return send(res, 503, 'application/json', JSON.stringify({ error: 'search unavailable' }));
+      }
+      throw error;
+    }
   }
   if (url.pathname === '/map') {
     if (req.method !== 'GET') return send(res, 405, 'text/plain', 'method not allowed\n', { allow: 'GET' });

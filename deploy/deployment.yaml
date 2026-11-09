@@ -30,6 +30,20 @@ spec:
                 secretKeyRef:
                   name: db-app
                   key: uri
+            # Elasticsearch (Elastic Cloud Serverless). Optional: when the
+            # secret is absent the app falls back to client-side search.
+            - name: ES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: es-credentials
+                  key: url
+                  optional: true
+            - name: ES_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: es-credentials
+                  key: api_key
+                  optional: true
           resources:
             requests:
               cpu: 100m

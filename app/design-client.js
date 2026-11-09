@@ -2,6 +2,8 @@
  const shell = document.querySelector('.app-shell');
  if (!shell) return;
  const all = [...document.querySelectorAll('.session')];
+ const list = document.querySelector('#session-list');
+ const suggestList = document.querySelector('#session-suggest');
  const tabs = [...document.querySelectorAll('[data-day]')];
  const input = document.querySelector('#session-search');
  const track = document.querySelector('#track-filter');
@@ -10,6 +12,14 @@
  const saved = new Set((shell.dataset.saved || '').split(',').filter(Boolean));
  let selectedDay = (tabs.find(t => t.getAttribute('aria-selected') === 'true') || tabs[0])?.dataset.day;
  let mode = 'explore';
+ // Restore the original title on every row (the ES highlight replaces it while a query is active)
+ // and pin the track option values so the dropdown keeps filtering on the bare track name.
+ all.forEach(row => { row.dataset.title = row.querySelector('.session-title').textContent; });
+ const trackOrig = new Map([...track.options].map(option => [option.textContent, option.textContent]));
+ [...track.options].forEach(option => { option.value = option.textContent; });
+ // Elasticsearch-backed search state. When es.dead the UI keeps the original
+ // client-side substring filter, so the app works without Elasticsearch.
+ const es = { dead: false, results: null, facets: null, key: '', req: 0 };
  try {
   const view = JSON.parse(sessionStorage.getItem(viewKey));
   if (view && typeof view === 'object') {
@@ -22,6 +32,22 @@
  } catch {}
  let toastTimer;
  function notify(message) {const toast = document.querySelector('.toast'); toast.textContent = message; toast.classList.add('visible'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('visible'), 2600);}
+ function esKey() {return JSON.stringify([input.value.trim(), selectedDay, track.value, mode]);}
+ function applyHighlights(active) {
+  all.forEach(row => {
+   const title = row.querySelector('.session-title');
+   const hit = active ? es.results.get(row.dataset.id) : null;
+   if (hit && hit.title) title.innerHTML = hit.title;
+   else title.textContent = row.dataset.title;
+  });
+ }
+ function applyTrackFacets() {
+  [...track.options].forEach(option => {
+   if (!option.value) return;
+   const count = es.facets ? es.facets[option.value] : 0;
+   option.textContent = (trackOrig.get(option.value) || option.value) + (count ? ' (' + count + ')' : '');
+  });
+ }
  function update() {
   const compact = document.querySelector('#session-list').classList.contains('compact');
   document.querySelectorAll('[data-nav]').forEach(n => n.classList.toggle('active', n.dataset.nav === mode));
@@ -32,9 +58,12 @@
    n.classList.toggle('selected', active); n.setAttribute('aria-pressed', String(active));
   });
   try {sessionStorage.setItem(viewKey, JSON.stringify({day:selectedDay, mode, search:input.value, track:track.value, compact}));} catch {}
+  const q = input.value.trim().toLowerCase();
+  const esActive = !es.dead && !!es.results && es.key === esKey();
   let count = 0;
   all.forEach(row => {
-   row.hidden = Date.parse(row.dataset.endsAt) <= Date.now() || row.dataset.date !== selectedDay || (mode === 'saved' && !saved.has(row.dataset.id)) || (track.value && row.dataset.track !== track.value) || !row.dataset.search.includes(input.value.trim().toLowerCase());
+   const matchesQuery = esActive ? es.results.has(row.dataset.id) : !row.dataset.search.includes(q);
+   row.hidden = Date.parse(row.dataset.endsAt) <= Date.now() || row.dataset.date !== selectedDay || (mode === 'saved' && !saved.has(row.dataset.id)) || (track.value && row.dataset.track !== track.value) || !matchesQuery;
    if (!row.hidden) count++;
    const button = row.querySelector('[data-save]');
    const isSaved = saved.has(row.dataset.id);
@@ -43,6 +72,16 @@
    button.textContent = isSaved ? 'Add to my schedule' : 'Add to my schedule';
    button.title = isSaved ? 'Remove from my schedule' : 'Add to my schedule';
   });
+  if (esActive) {
+   // Rank the visible rows by Elasticsearch score and apply highlights + facet counts.
+   const visible = all.filter(row => !row.hidden).sort((a, b) => es.results.get(b.dataset.id).score - es.results.get(a.dataset.id).score);
+   visible.forEach(row => list.appendChild(row));
+   applyHighlights(true);
+   if (!track.value) applyTrackFacets(); else [...track.options].forEach(option => { if (option.value) option.textContent = trackOrig.get(option.value) || option.value; });
+  } else {
+   applyHighlights(false);
+   [...track.options].forEach(option => { if (option.value) option.textContent = trackOrig.get(option.value) || option.value; });
+  }
   document.querySelector('#result-count').textContent = count;
   document.querySelector('#saved-count').textContent = all.filter(row => saved.has(row.dataset.id) && Date.parse(row.dataset.endsAt) > Date.now()).length;
   document.querySelector('.empty-state').hidden = count > 0;
@@ -51,17 +90,61 @@
   const date = new Date(selectedDay + 'T12:00:00');
   document.querySelector('#day-label').textContent = Number.isNaN(date.getTime()) ? 'Sessions' : date.toLocaleDateString('en-US', {weekday:'long', month:'long',day:'numeric'});
  }
+ let searchTimer;
+ function scheduleSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runSearch, 200);
+ }
+ function runSearch() {
+  const q = input.value.trim();
+  if (!q || es.dead) { es.results = null; es.facets = null; es.key = ''; update(); return; }
+  const key = esKey();
+  const params = new URLSearchParams({q, day: selectedDay, size: 200});
+  if (track.value) params.set('track', track.value);
+  const req = ++es.req;
+  fetch('/api/search?' + params.toString(), {credentials: 'same-origin'})
+   .then(response => {
+    if (response.status === 503) es.dead = true;
+    if (!response.ok) throw new Error('status ' + response.status);
+    return response.json();
+   })
+   .then(data => {
+    if (es.req !== req || es.dead) return;
+    es.results = new Map((data.results || []).map(r => [r.id, r]));
+    es.facets = data.facets ? data.facets.track : null;
+    es.key = key;
+    update();
+   })
+   .catch(() => { if (es.req === req && !es.dead) { es.results = null; es.facets = null; es.key = ''; update(); } });
+ }
+ let suggestTimer;
+ function scheduleSuggest() {
+  clearTimeout(suggestTimer);
+  if (!suggestList) return;
+  const q = input.value.trim();
+  if (q.length < 2) { suggestList.innerHTML = ''; return; }
+  suggestTimer = setTimeout(() => {
+   fetch('/api/suggest?q=' + encodeURIComponent(q), {credentials: 'same-origin'})
+    .then(response => response.ok ? response.json() : [])
+    .then(data => {
+     const needle = q.toLowerCase();
+     suggestList.innerHTML = ((data && data.suggestions) || []).filter(t => t.toLowerCase().includes(needle)).map(t => '<option value="' + t.replace(/"/g, '&quot;') + '"></option>').join('');
+    })
+    .catch(() => {});
+  }, 200);
+ }
  tabs.forEach((t, i) => {
-  t.addEventListener('click', () => {selectedDay = t.dataset.day; update();});
+  t.addEventListener('click', () => {selectedDay = t.dataset.day; update(); scheduleSearch();});
   t.addEventListener('keydown', e => {if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]; next.focus(); next.click();});
  });
- input.addEventListener('input', update); track.addEventListener('change', update);
+ input.addEventListener('input', () => {update(); scheduleSearch(); scheduleSuggest();});
+ track.addEventListener('change', () => {update(); scheduleSearch();});
  document.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', e => {
   if(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
   e.preventDefault();
   mode = b.dataset.nav;
   if (mode === 'saved') {const first = all.find(r => saved.has(r.dataset.id) && Date.parse(r.dataset.endsAt) > Date.now()); if (first) selectedDay = first.dataset.date;}
-  update(); document.querySelector('#sessions').scrollIntoView({behavior:'smooth', block:'start'});
+  update(); scheduleSearch(); document.querySelector('#sessions').scrollIntoView({behavior:'smooth', block:'start'});
  }));
  document.querySelectorAll('[data-save]').forEach(b => b.addEventListener('click', async () => {
   const id = b.closest('.session').dataset.id;
@@ -100,5 +183,6 @@
  document.querySelector('#jump-sessions').addEventListener('click', () => {document.querySelector('#sessions').scrollIntoView({behavior:'smooth'}); input.focus({preventScroll:true});});
  document.addEventListener('keydown', e => {if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {e.preventDefault(); input.focus();}});
  update();
+ if (input.value.trim() && !es.dead) scheduleSearch();
  setInterval(update, 30000);
 })();
